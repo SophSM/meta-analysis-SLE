@@ -1,0 +1,223 @@
+---
+title: "meta-analysis"
+author: "Sofia Salazar"
+date: "5/17/2022"
+output: html_document
+---
+## Setup
+
+This script is used to perform a Meta-analysis of the studies in the `SRA-IDs.txt` file.
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/out
+module load r/4.0.2
+R
+```
+
+## Libraries
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(knitr)
+library(ComplexHeatmap)
+library(metafor)
+library(pheatmap)
+library(RColorBrewer)
+library(meta)
+library("MetaVolcanoR")
+library(ggrepel)
+```
+
+## Read data
+
+```{r}
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/fullTables.csv")
+colnames(full_tables)
+```
+
+Filtering genes by selecting only protein coding genes in the human genome using biomaRt.
+
+```{r}
+library("biomaRt")
+mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl")
+all_genes <- getBM(attributes = c( "hgnc_symbol","transcript_biotype"), 
+                          filters = c("hgnc_symbol"), 
+                          values = full_tables$gene_name,
+                          #values = list(biotype=c("protein_coding")), 
+                          mart = mart)
+genes_emb <- full_tables$gene_name %in% all_genes$hgnc_symbol
+```
+
+## p-Values
+
+We first check pvalues histograms. [Ref](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6164648/)
+
+```{r}
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/"
+FC <- str_subset(colnames(full_tables),"logFC")
+# Genes with a adjusted p value
+adjp <- full_tables %>%
+  filter(gene_name != "NA") %>%
+  gather("SRA"  ,"adjP",-gene_name) %>%
+  filter(SRA %in% str_subset(colnames(full_tables),"adj.P.Val|padj")) %>%
+  mutate(SRA=gsub(".*_","",SRA))
+  
+adjp
+#pdf("Pvalues.pdf",width = 8,height = 6)
+png(file = paste0(outdir,"adj-pvalue-histogram.png"), width = 800, height = 800)
+adjp %>%    
+  group_by(SRA) %>%
+  ggplot( aes(x=adjP, fill=SRA)) +
+  geom_histogram( color="#e9ecef", alpha=0.6) + #position = 'identity'
+  geom_vline(xintercept=0.05, linetype="dashed", color = "red") +
+  theme_bw(16) +
+  xlab("adjusted p-value") +
+  ylab("Frequency") +
+  facet_wrap(~SRA, scales = "free_y") 
+dev.off()
+```
+
+Then, we look for how many genes are up regulated with a p-value less than `r  adj_pvalue`  in the 
+
+```{r}
+# log fold change
+logFC <- full_tables %>%
+  filter(gene_name != "NA") %>%
+  gather("SRA"  ,"logFC",-gene_name) %>%
+  filter(SRA %in% str_subset(colnames(full_tables),"logFC")) %>% 
+  mutate(SRA=gsub(".*_","",SRA))
+logFC
+png(file = paste0(outdir,"logFC-histogram.png"), width = 800, height = 800)
+logFC %>%    
+  group_by(SRA) %>%
+  ggplot( aes(x=logFC, fill=SRA)) +
+  geom_histogram( color="#e9ecef", alpha=0.6) + #position = 'identity'
+  geom_vline(xintercept=0, linetype="dashed", color = "red") +
+  theme_bw(16) +
+  xlab("logFC") +
+  ylab("Frequency") +
+  facet_wrap(~SRA, scales = "free_x") 
+dev.off()
+# recovering logFC values from genes with p value less than 0.01 
+adj_pvalue <- 0.05
+ap <- left_join(adjp,logFC,by = c("gene_name" = "gene_name", "SRA" = "SRA")) %>%
+  filter(adjP < adj_pvalue) %>% 
+  dplyr::select(-adjP) %>% 
+  spread(SRA,logFC) %>% 
+  replace(is.na(.), 0)
+ap
+# Experiments with no DE genes 
+#unique(logFC$SRA)[which(!unique(logFC$SRA)  %in% colnames(ap))]
+#ap$GSE42057 <- 0
+# selecting up regulated genes
+up <- ap %>%
+  mutate_at(vars(-gene_name),list(~if_else( .>0, 1, 0)))
+  
+down <- ap %>%
+  mutate_at(vars(-gene_name),list(~if_else( .<0, 1, 0)))
+
+### UPREGULATED GENES
+
+m <- make_comb_mat(up,mode = "distinct")
+#m <- m[comb_degree(m) >= 1]
+m <- m[comb_degree(m) >= 5 | comb_degree(m) == 1]
+#pdf("upsetUP.pdf",width = 14,height = 6)
+
+png(file = paste0(outdir,"UpSet-plot-upregulated.png"), width = 800, height = 800)
+ht <- draw(UpSet(m,
+      pt_size = unit(5, "mm"), 
+      lwd = 3,
+      comb_col = c("red", "#5c5c5c","#5c5c5c","#5c5c5c", "black","blue")[comb_degree(m)])
+      #order.by = "freq"
+    )
+od = column_order(ht)
+cs = comb_size(m)
+decorate_annotation("intersection_size", {
+    grid.text(cs[od], x = seq_along(cs), y = unit(cs[od], "native") + unit(2, "pt"), 
+        default.units = "native", just = "bottom", gp = gpar(fontsize = 12))
+})
+dev.off()
+
+comb_size(m)
+sample(up$gene_name[extract_comb(m,"10")],)
+q
+### DOWNREGULATED GENES
+
+m <- make_comb_mat(down,mode = "distinct")
+#m <- m[comb_degree(m) >= 1]
+m <- m[comb_degree(m) >= 5 | comb_degree(m) == 1] 
+#pdf("upsetDOWN.pdf",width = 14,height = 6)
+png(file = paste0(outdir,"UpSet-plot-downregulated.png"), width = 800, height = 800)
+ht <- draw(UpSet(m,
+      pt_size = unit(4, "mm"), 
+      lwd = 3,
+      comb_col = c("blue", "#5c5c5c","#5c5c5c","#5c5c5c", "black","red")[comb_degree(m)])
+      #order.by = "freq"
+    )
+od = column_order(ht)
+cs = comb_size(m)
+decorate_annotation("intersection_size", {
+    grid.text(cs[od], x = seq_along(cs), y = unit(cs[od], "native") + unit(2, "pt"), 
+        default.units = "native", just = "bottom", gp = gpar(fontsize = 12))
+})
+dev.off()
+comb_size(m)
+sample(up$gene_name[extract_comb(m,"11")],)
+```
+
+## Meta-analysis for a single gene
+
+
+```{r}
+FC <- str_subset(colnames(full_tables),"logFC")
+SE <- str_subset(colnames(full_tables),"SE_")
+SRA <- gsub(".*_","",FC)
+## Funtion to perform a meta-analysis per gene
+meta.plot <- function(gs){
+gene <-  full_tables[full_tables$gene_name == gs,]
+#gene <-  na.omit(full_tables[full_tables$GENE.SYMBOL == gs,])
+gene <- gene[!is.na(gene$gene_name),]
+dat <- data.frame(
+  yi = as.numeric(gene[,FC]),
+  sei = as.numeric(gene[,SE]),
+  n1i = as.numeric(gse_table$CONTROL),
+  n2i = as.numeric(gse_table$COPD)
+)
+dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) 
+# meta analysis in the simplest way
+#res <- metafor::rma(yi, sei=sei,n1i=n1i,n2i=n2i, data=dat)
+#funnel(res)
+#forest(res,slab = GSE, main=unique(gene$GENE.SYMBOL))
+dat$study <- rownames(gse_table)
+dat$country <- gse_table$COUNTRY
+m1 <- metagen(TE = yi, 
+                  seTE = sei, 
+                  studlab = study, 
+                  n.e = n2i, 
+                  n.c = n1i, 
+                  data = dat,
+                  method.tau = "REML", 
+                  prediction = TRUE,
+                  sm= "MD",
+                  comb.fixed = FALSE)
+forest(m1,
+       col.diamond = "blue",
+       #leftcols = c("study"),
+       #rightcols = c("ci", "w.random"),
+       leftlabs =  c("Study","logFC","se",NA,NA),
+       colgap.left = unit(5,"mm"),
+       lab.e = "COPD",
+       colgap.studlab = unit(-10,"mm"),
+       ff.study.label = "bold",
+       just = "center",
+       xlab = gs,
+       prediction = TRUE)
+}
+pdf(FIG("forestplot_SLC8A1.pdf"), width = 10, height = 4)
+meta.plot("SLC8A1")
+dev.off()
+pdf(FIG("forestplot_AFF3.pdf"), width = 10, height = 4)
+meta.plot("AFF3")
+dev.off()
+```
