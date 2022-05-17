@@ -1,0 +1,120 @@
+---
+title: "Merge data"
+author: "Sofia Salazar"
+date: "5/17/2022"
+output: html_document
+---
+
+## Setup
+
+This script is used to join all the DE data into a single dataset.
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/out
+module load r/4.0.2
+R
+```
+
+## Libraries
+
+```{r}
+library(tidyverse)
+```
+
+### Import data
+
+We will import DE results from all experiments. 
+
+```{r}
+files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE", full.names = T)
+files <- gtools::mixedsort(files)[-10]
+data <- files %>% map(read_csv)
+```
+
+## Merge data
+
+We will use a function to select columns we are interested in.
+
+Using `column_selection` function, we can subset columns gene name,
+logFC, adjsted p-value, and confidence intervals with unique id. 
+
+```{r}
+column_selection <- function(df){
+  # Compete column name (i.e "Gene.Symbol_GSE1122")
+  geneName <- str_subset(colnames(df),"gene_name")
+  logFC <- str_subset(colnames(df),"logFC")
+  adjP <- str_subset(colnames(df),"adj.P.Val|padj")
+  CI.L <- str_subset(colnames(df),"CI.L")
+  CI.R <- str_subset(colnames(df),"CI.R")
+  
+  selectedColumns <- c(geneName,logFC,adjP,CI.L,CI.R)
+  #Return subset of dataframe to only keep the first duplicate
+  DF <- df[!duplicated(df[,geneName]),selectedColumns] %>%
+    rename(gene_name=geneName)
+  
+  return(DF)
+}
+```
+
+Joining all data into a single dataset
+
+```{r merge}
+full_tables <- data %>% 
+  map(column_selection)%>% 
+  # joining using the same gene ID
+  purrr::reduce(full_join, by = "gene_name") 
+full_tables  
+## Select genes with at least 2 experiments with data information
+genes <- full_tables %>% 
+  select(gene_name,str_subset(colnames(full_tables),"logFC")) %>%
+  filter(rowSums(is.na(.)) < 9 ) %>% # at least 3 experiments with logFC (9/12 NA)
+  select(gene_name)
+full_tables <- filter(full_tables, gene_name %in% genes$gene_name)
+full_tables <- full_tables[which(!is.na(full_tables$gene_name)),]
+full_tables
+## Save data 
+write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/fullTables.csv")
+```
+
+## Session Info
+```{r}
+sessionInfo()
+# R version 4.0.2 (2020-06-22)
+# Platform: x86_64-pc-linux-gnu (64-bit)
+# Running under: CentOS Linux 7 (Core)
+
+# Matrix products: default
+# BLAS:   /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRblas.so
+# LAPACK: /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRlapack.so
+
+# locale:
+ # [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ # [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ # [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ # [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ # [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+# [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+# attached base packages:
+# [1] stats     graphics  grDevices utils     datasets  methods   base     
+
+# other attached packages:
+# [1] forcats_0.5.1   stringr_1.4.0   dplyr_1.0.3     purrr_0.3.4    
+# [5] readr_1.4.0     tidyr_1.1.2     tibble_3.1.3    ggplot2_3.3.5  
+# [9] tidyverse_1.3.0
+
+# loaded via a namespace (and not attached):
+ # [1] Rcpp_1.0.7        cellranger_1.1.0  pillar_1.6.2      compiler_4.0.2   
+ # [5] dbplyr_2.0.0      tools_4.0.2       jsonlite_1.7.2    lubridate_1.7.9.2
+ # [9] lifecycle_1.0.0   gtable_0.3.0      pkgconfig_2.0.3   rlang_0.4.11     
+# [13] reprex_1.0.0      cli_3.0.1         rstudioapi_0.13   DBI_1.1.1        
+# [17] haven_2.3.1       withr_2.4.2       xml2_1.3.2        httr_1.4.2       
+# [21] gtools_3.8.2      fs_1.5.0          generics_0.1.0    vctrs_0.3.8      
+# [25] hms_1.1.0         grid_4.0.2        tidyselect_1.1.0  glue_1.4.2       
+# [29] R6_2.5.0          fansi_0.5.0       readxl_1.3.1      modelr_0.1.8     
+# [33] magrittr_2.0.1    backports_1.2.1   scales_1.1.1      ellipsis_0.3.2   
+# [37] rvest_0.3.6       assertthat_0.2.1  colorspace_2.0-2  utf8_1.2.2       
+# [41] stringi_1.6.2     munsell_0.5.0     broom_0.7.9       crayon_1.4.1 
+```
+

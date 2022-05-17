@@ -63,8 +63,10 @@ for(i in 1:length(SRA_projects)){
   dge_object <- DE_analysis[i]
   # apply the function to the rse object inside each list name
   DE_result <- lapply(dge_object, do_DE, rse_gene = rse)
-  # saving as csv
-  write_csv(as.data.frame(DE_result), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/Table_Genes_", names(rse_curated[i]), ".csv"))
+  # renaming colnames with the SRA id
+  colnames(DE_result[[1]]) <- str_c(colnames(DE_result[[1]]),"_", names(rse_curated[i]))
+   # saving as csv
+  write_csv(as.data.frame(DE_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE/Table_Genes_", names(rse_curated[i]), ".csv"))
   # overwriting DE_analysis[i] to use later
   DE_analysis[i] <- DE_result
 }
