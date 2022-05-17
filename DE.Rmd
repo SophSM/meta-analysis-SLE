@@ -1,0 +1,72 @@
+---
+title: "DE"
+author: "Sofia Salazar"
+date: "5/16/2022"
+output: html_document
+---
+
+## Setup
+
+This script is used to perform a DE analysis in the previously normalized `DGEList` objects obtained from the previous `normalization.Rmd` script.
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/out
+module load r/4.0.2
+R
+```
+
+## Libraries
+
+```{r}
+library("recount3")
+library(edgeR)
+library(tidyverse)
+library(limma)
+```
+
+## Differential expression
+
+Getting the normalized `DGEList` objects obtained from previous `normalization.Rmd` and the `rse` objects obtained from the previous `curation.Rmd` script.
+
+
+```{r}
+SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
+DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/normalized_dge.xz")
+rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+```
+
+The following function performs the DE analysis for each `DGEList` given as input.
+
+```{r}
+do_DE <- function(dge, rse_gene){
+  design <- model.matrix(~ DISEASE, data = colData(rse_gene))
+  vGene <- voom(dge, design, plot = TRUE)
+  # eBayes in lmFit model
+  eb_results <- eBayes(lmFit(vGene))
+  de_results <- topTable(eb_results, coef = 2, number = nrow(rse_gene), sort.by = "none")
+  dim(de_results)
+  head(de_results)
+  res <- as_tibble(de_results,rownames="rownames")
+  return(res)
+}
+```
+
+Applying the function
+
+```{r}
+for(i in 1:length(SRA_projects)){
+  rse_object <- rse_curated[i]
+  rse <- rse_object[[1]]
+  dge_object <- DE_analysis[i]
+  # apply the function to the rse object inside each list name
+  DE_result <- lapply(dge_object, do_DE, rse_gene = rse)
+  # overwriting each list element for the DE analysis
+  DE_analysis[i] <- DE_result
+}
+
+DE_analysis
+```
+
+
+
