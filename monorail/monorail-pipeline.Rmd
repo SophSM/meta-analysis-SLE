@@ -1,0 +1,40 @@
+---
+title: "monorail pipeline"
+author: "Sofia Salazar"
+date: "5/10/2022"
+output: html_document
+---
+
+Getting the monorail scripts.
+
+```{bash eval = F}
+qlogin
+module load singularity/2.6
+module load git/2.10.0
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail
+git clone https://github.com/langmead-lab/monorail-external.git
+```
+
+Loading singularity image containers for both pump and unify
+
+```{bash eval = F}
+SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/benlangmead/recount-rs5:1.0.6
+SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/broadsword/recount-unify:1.1.0
+```
+
+Getting reference indexes
+
+```{bash eval = F}
+bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_unify_refs.sh hg38
+bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_human_ref_indexes.sh
+mkdir references
+mv hg38 references/; mv hg38_unify references/
+mkdir pump
+```
+
+Running pump module
+
+```{bash eval = F}
+./run_pump.sh SRR13214141 SRP296987
+```
+
