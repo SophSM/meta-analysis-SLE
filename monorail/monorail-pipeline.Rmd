@@ -38,3 +38,22 @@ Running pump module
 ./run_pump.sh SRR13214141 SRP296987
 ```
 
+### Local input
+
+```{bash}
+mkdir SRP311059
+cd SRP311059
+mkdir pump
+chmod +x local-get-pump-commands.py
+chmod +x run-pump-local.sh
+```
+
+```{bash eval = F}
+./local-get-pump-commands.py
+```
+
+```{bash}
+chmod +x local-pump-commands.sh
+./local-pump-commands.sh
+```
+
