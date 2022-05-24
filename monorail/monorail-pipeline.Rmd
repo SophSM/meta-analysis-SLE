@@ -19,41 +19,96 @@ Loading singularity image containers for both pump and unify
 
 ```{bash eval = F}
 SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/benlangmead/recount-rs5:1.0.6
-SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/broadsword/recount-unify:1.1.0
+SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/broadsword/recount-unify:1.0.9
 ```
 
-Getting reference indexes
+Getting reference indexes for both pump and unify modules
 
 ```{bash eval = F}
 bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_unify_refs.sh hg38
 bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_human_ref_indexes.sh
 mkdir references
 mv hg38 references/; mv hg38_unify references/
-mkdir pump
 ```
 
 Running pump module
 
 ```{bash eval = F}
-./run_pump.sh SRR13214141 SRP296987
-```
-
-### Local input
-
-```{bash}
-mkdir SRP311059
-cd SRP311059
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941
 mkdir pump
-chmod +x local-get-pump-commands.py
-chmod +x run-pump-local.sh
+./pump-commands.sh
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987
+mkdir pump
+./pump-commands.sh
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059
+mkdir pump
+./pump-commands.sh
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP322015
+mkdir pump
+./pump-commands.sh
 ```
+
+Consolidating pump outputs in a directory
 
 ```{bash eval = F}
-./local-get-pump-commands.py
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059
+mkdir pump_output
+rsync --progress -rav pump/*/output/ pump_output
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP322015
+mkdir pump_output
+rsync --progress -rav pump/*/output/ pump_output
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987
+mkdir pump_output
+rsync --progress -rav pump/*/output/ pump_output
 ```
 
+Running unify module
+
+For SRP311059
+
+```{bash eval = F}
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059
+mkdir unify_output
+cp ../recount-unify_1.0.9.sif unify_output
+cd unify_output
+cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP311059/input_samples.tsv .
+chmod +x hpc_unify_31.sh
+./hpc_unify_31.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/unify_output SRP311059 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/pump_output
+```
+
+For SRP322015
+
+```{bash eval = F}
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP322015
+mkdir unify_output
+cp ../recount-unify_1.0.9.sif unify_output
+cd unify_output
+cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP322015/input_samples.tsv .
+chmod +x hpc_unify_32.sh
+./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/unify_output SRP311059 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/pump_output
+```
+
+For SRP296987
+
+```{bash eval = F}
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987
+mkdir unify_output
+cp ../recount-unify_1.0.9.sif unify_output
+cd unify_output
+cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP296987/input_samples.tsv .
+chmod +x hpc_unify_29.sh
+./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987/unify_output SRP296987 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987/pump_output
+```
+
+For SRP111941
+
 ```{bash}
-chmod +x local-pump-commands.sh
-./local-pump-commands.sh
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941
+mkdir unify_output
+cp ../recount-unify_1.0.9.sif unify_output
+cd unify_output
+cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP111941/input_samples.tsv .
+chmod +x hpc_unify_11.sh
+./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/unify_output SRP111941 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/pump_output
 ```
 
