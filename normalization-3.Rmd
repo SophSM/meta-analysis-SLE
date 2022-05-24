@@ -7,7 +7,7 @@ output: html_document
 
 ## Setup
 
-In this script we use `edgeR` for normalization by creating a `DGEList` object for each `rse` objects obtained from the previous `curation.Rmd` script.
+In this script we use `edgeR` for normalization by creating a `DGEList` object for each `rse` objects obtained from the previous `curation-2.Rmd` script.
 
 ```{bash}
 qlogin

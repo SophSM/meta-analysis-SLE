@@ -7,7 +7,7 @@ output: html_document
 
 ## Setup
 
-This script is used to perform a DE analysis in the previously normalized `DGEList` objects obtained from the previous `normalization.Rmd` script.
+This script is used to perform a DE analysis in the previously normalized `DGEList` objects obtained from the previous `normalization-3.Rmd` script.
 
 ```{bash}
 qlogin
