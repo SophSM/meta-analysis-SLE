@@ -60,6 +60,9 @@ rsync --progress -rav pump/*/output/ pump_output
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987
 mkdir pump_output
 rsync --progress -rav pump/*/output/ pump_output
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941
+mkdir pump_output
+rsync --progress -rav pump/*/output/ pump_output
 ```
 
 Running unify module
