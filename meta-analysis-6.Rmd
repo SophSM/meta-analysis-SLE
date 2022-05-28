@@ -34,7 +34,10 @@ library(ggrepel)
 ```{r}
 full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/fullTables.csv")
 colnames(full_tables)
+rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 ```
+
 
 Filtering genes by selecting only protein coding genes in the human genome using biomaRt.
 
@@ -121,7 +124,7 @@ down <- ap %>%
 
 m <- make_comb_mat(up,mode = "distinct")
 #m <- m[comb_degree(m) >= 1]
-m <- m[comb_degree(m) >= 5 | comb_degree(m) == 1]
+m <- m[comb_degree(m) >= 2 | comb_degree(m) == 1]
 #pdf("upsetUP.pdf",width = 14,height = 6)
 
 png(file = paste0(outdir,"UpSet-plot-upregulated.png"), width = 800, height = 800)
@@ -140,13 +143,13 @@ decorate_annotation("intersection_size", {
 dev.off()
 
 comb_size(m)
-sample(up$gene_name[extract_comb(m,"10")],)
+sample(up$gene_name[extract_comb(m,"11")],)
 q
 ### DOWNREGULATED GENES
 
 m <- make_comb_mat(down,mode = "distinct")
 #m <- m[comb_degree(m) >= 1]
-m <- m[comb_degree(m) >= 5 | comb_degree(m) == 1] 
+m <- m[comb_degree(m) >= 2 | comb_degree(m) == 1] 
 #pdf("upsetDOWN.pdf",width = 14,height = 6)
 png(file = paste0(outdir,"UpSet-plot-downregulated.png"), width = 800, height = 800)
 ht <- draw(UpSet(m,
@@ -168,56 +171,69 @@ sample(up$gene_name[extract_comb(m,"11")],)
 
 ## Meta-analysis for a single gene
 
+We first calculate the Standar error using confidence intervals
+
+```{r}
+CI.R <- str_subset(colnames(full_tables),"CI.R")
+CI.L <- str_subset(colnames(full_tables),"CI.L")
+for(i in 1:length(CI.R)) {
+  full_tables[str_c("SE_",gsub(".*_","",CI.R))] <- (full_tables[,CI.R]-full_tables[,CI.L]) /(2*1.96)
+}
+```
 
 ```{r}
 FC <- str_subset(colnames(full_tables),"logFC")
 SE <- str_subset(colnames(full_tables),"SE_")
 SRA <- gsub(".*_","",FC)
-## Funtion to perform a meta-analysis per gene
+## Function to perform a meta-analysis per gene
 meta.plot <- function(gs){
-gene <-  full_tables[full_tables$gene_name == gs,]
-#gene <-  na.omit(full_tables[full_tables$GENE.SYMBOL == gs,])
-gene <- gene[!is.na(gene$gene_name),]
-dat <- data.frame(
-  yi = as.numeric(gene[,FC]),
-  sei = as.numeric(gene[,SE]),
-  n1i = as.numeric(gse_table$CONTROL),
-  n2i = as.numeric(gse_table$COPD)
-)
-dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) 
-# meta analysis in the simplest way
-#res <- metafor::rma(yi, sei=sei,n1i=n1i,n2i=n2i, data=dat)
-#funnel(res)
-#forest(res,slab = GSE, main=unique(gene$GENE.SYMBOL))
-dat$study <- rownames(gse_table)
-dat$country <- gse_table$COUNTRY
-m1 <- metagen(TE = yi, 
+  gene <-  full_tables[full_tables$gene_name == gs,] # IFI44L
+  #gene <-  na.omit(full_tables[full_tables$gene_name == gs,])
+  gene <- gene[!is.na(gene$gene_name),]
+  dat <- data.frame(
+    yi = as.numeric(gene[,FC]),
+    sei = as.numeric(gene[,SE]),
+    n1i = as.numeric(SRA_info$CONTROL),
+    n2i = as.numeric(SRA_info$SLE)
+  )
+
+  dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) 
+### meta analysis in the simplest way
+#png(file= paste0(outdir,"forest-test.png"), width = 800, height = 800)
+  #res <- metafor::rma(yi, sei=sei,n1i=n1i,n2i=n2i, data=dat)
+  #funnel(res)
+  #forest(res,slab = SRA, main=unique(gene$gene_name))
+#dev.off()
+#####
+  # dat$study <- rownames(full_tables)
+  m1 <- metagen(TE = yi, 
                   seTE = sei, 
-                  studlab = study, 
+                  # studlab = study, 
                   n.e = n2i, 
                   n.c = n1i, 
                   data = dat,
                   method.tau = "REML", 
                   prediction = TRUE,
                   sm= "MD",
-                  comb.fixed = FALSE)
-forest(m1,
+                  fixed = FALSE)
+  forest(m1,
        col.diamond = "blue",
        #leftcols = c("study"),
        #rightcols = c("ci", "w.random"),
        leftlabs =  c("Study","logFC","se",NA,NA),
        colgap.left = unit(5,"mm"),
-       lab.e = "COPD",
+       label.e = "SLE",
        colgap.studlab = unit(-10,"mm"),
        ff.study.label = "bold",
        just = "center",
        xlab = gs,
        prediction = TRUE)
 }
-pdf(FIG("forestplot_SLC8A1.pdf"), width = 10, height = 4)
-meta.plot("SLC8A1")
+
+png(file= paste0(outdir,"forestplot-IFI6.png"), width = 800, height = 800)
+  meta.plot("IFI6")
 dev.off()
-pdf(FIG("forestplot_AFF3.pdf"), width = 10, height = 4)
-meta.plot("AFF3")
+png(file= paste0(outdir,"forestplot-IFI44L.png"), width = 800, height = 800)
+  meta.plot("IFI44L")
 dev.off()
 ```
