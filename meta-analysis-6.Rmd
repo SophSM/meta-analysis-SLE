@@ -12,6 +12,7 @@ This script is used to perform a Meta-analysis of the studies in the `SRA-IDs.tx
 qlogin
 cd /mnt/Citosina/amedina/ssalazar/meta/out
 module load r/4.0.2
+module load pandoc/2.9.2
 R
 ```
 
@@ -27,6 +28,7 @@ library(RColorBrewer)
 library(meta)
 library("MetaVolcanoR")
 library(ggrepel)
+library("biomaRt")
 ```
 
 ## Read data
@@ -42,7 +44,6 @@ SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 Filtering genes by selecting only protein coding genes in the human genome using biomaRt.
 
 ```{r}
-library("biomaRt")
 mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl")
 all_genes <- getBM(attributes = c( "hgnc_symbol","transcript_biotype"), 
                           filters = c("hgnc_symbol"), 
@@ -191,10 +192,11 @@ meta.plot <- function(gs){
   #gene <-  na.omit(full_tables[full_tables$gene_name == gs,])
   gene <- gene[!is.na(gene$gene_name),]
   dat <- data.frame(
-    yi = as.numeric(gene[,FC]),
+    yi = as.numeric(gene[,FC]), # effect sizes observed (Fold change)
     sei = as.numeric(gene[,SE]),
     n1i = as.numeric(SRA_info$CONTROL),
-    n2i = as.numeric(SRA_info$SLE)
+    n2i = as.numeric(SRA_info$SLE),
+    study = SRA_info$SRA
   )
 
   dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) 
@@ -205,10 +207,10 @@ meta.plot <- function(gs){
   #forest(res,slab = SRA, main=unique(gene$gene_name))
 #dev.off()
 #####
-  # dat$study <- rownames(full_tables)
+  dat$study <- SRA_info$SRA
   m1 <- metagen(TE = yi, 
                   seTE = sei, 
-                  # studlab = study, 
+                  studlab = study, 
                   n.e = n2i, 
                   n.c = n1i, 
                   data = dat,
@@ -218,7 +220,7 @@ meta.plot <- function(gs){
                   fixed = FALSE)
   forest(m1,
        col.diamond = "blue",
-       #leftcols = c("study"),
+       leftcols = c("study"),
        #rightcols = c("ci", "w.random"),
        leftlabs =  c("Study","logFC","se",NA,NA),
        colgap.left = unit(5,"mm"),
@@ -230,10 +232,325 @@ meta.plot <- function(gs){
        prediction = TRUE)
 }
 
+```
+
+## Meta-analysis for all genes
+
+Saving the results in a new dataframe.
+
+```{r}
+#gs <- unique(na.omit(full_tables)$GENE.SYMBOL)
+gs <- full_tables$gene_name
+meta <- data.frame(genes = 0,
+                   TE.random = 0,
+                   pval.random = 0,
+                   tau2 = 0,
+                   I2 = 0,
+                   pval.Q = 0,
+                   num_exp=0)
+# meta <- data.frame(genes = 0,
+#                    QEp=0,
+#                    estimate=0,
+#                    pval=0,
+#                    se=0,
+#                    H2=0,
+#                    tau2=0,
+#                    I2=0,
+#                    num_exp=0)
+gm <- full_tables$gene_name
+full_tables[full_tables == 0] <- NA
+length(gm)
+for (i in gm) { 
+#for( i in gm[18705:length(gm)]){ #problemas con 
+  gene <- full_tables[which(full_tables$gene_name == i),]
+  dat <- data.frame(
+    yi = as.numeric(gene[,FC]),
+    sei = as.numeric(gene[,SE]),
+    n1i = as.numeric(SRA_info$CONTROL),
+    n2i = as.numeric(SRA_info$SLE)
+  )
+  dat$study <- rownames(SRA_info)
+  #dat$country <- gse_table$COUNTRY
+  
+  # meta analysis with random models "REML"
+  m1 <- metagen(TE = yi, 
+                  seTE = sei, 
+                  studlab = study, 
+                  n.e = n2i, 
+                  n.c = n1i, 
+                  data = dat,
+                  method.tau = "REML", 
+                  prediction = TRUE,
+                  sm= "MD",
+                  control=list(maxiter=1000), # increasing number of iteration
+                  comb.fixed = FALSE)
+  # res <- suppressWarnings(metafor::rma(yi, sei=sei,control=list(stepadj=.5,maxiter=1000)))
+  num_exp <- sum(!is.na(dat$yi))
+  meta <- rbind(meta,
+                c(i, m1$TE.random,m1$pval.random,m1$tau2,m1$I2,m1$pval.Q,num_exp))
+  #meta <- rbind(meta,c(i,res$QEp,res$beta,res$pval,res$se,res$H2,res$tau2,res$I2,num_exp))
+}
+# Numeric values
+meta <- meta[-1,]
+rownames(meta) <- meta$genes
+meta <- meta[,-1] %>% mutate_all(as.numeric)
+# FDR correction
+meta$qval.random <- p.adjust(meta$pval.random,method="fdr")
+meta$qval.Q <- p.adjust(meta$pval.Q, method = "fdr")
+```
+
+### Output of full genes meta-analysis
+```{r}
+write.csv(meta, file ="/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
+```
+
+```{r}
+meta <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
+### Distribution of statistics 
+png(file= paste0(outdir,"distribution-stats-full.png"), width = 800, height = 800)
+  bqval <- ggplot(meta) +
+    aes(x = qval.random) +
+    geom_histogram(bins = 55L, fill = "#c45a75") +
+    labs(x = "q-value from REML") +
+    theme_classic()
+  bq <- ggplot(meta) +
+    aes(x = qval.Q) +
+    geom_histogram(bins = 55L, fill = "#c45a75") +
+    labs(x = "q-value for Q test") +
+    theme_classic()
+  bte <- ggplot(meta) +
+    aes(x = TE.random) +
+    geom_histogram(bins = 55L, fill = "#c45a75") +
+    labs(x = "Estimate values") +
+    theme_classic()
+  btau <- ggplot(meta) +
+    aes(x = tau2) +
+    geom_histogram(bins = 55L, fill = "#c45a75") +
+    labs(x = "Tau2") +
+    theme_classic()
+  bi2 <- ggplot(meta) +
+    aes(x = I2) +
+    geom_histogram(bins = 55L, fill = "#c45a75") +
+    labs(x = "I2") +
+    theme_classic()
+  ggpubr::ggarrange(bqval,bq,bte,btau,bi2,
+                  nrow =2,
+                  ncol =3)
+dev.off()
+### Selecting genes
+qval_cutoff <- 0.05
+genesqval <- meta %>% 
+  filter(meta$qval.random <= qval_cutoff & I2 < 0.40 & num_exp > 1) %>% 
+  arrange(TE.random)
+genesqval
+kable(c(head(genesqval),tail(genesqval)), caption = "Meta-analysis")
+
+### logFC values from selected genes
+topgenes <- full_tables %>% 
+  filter(full_tables$gene_name %in% genesqval$X1) %>% 
+  dplyr::select(gene_name,contains("logFC"))
+## as dataframe
+topgenes <- column_to_rownames(topgenes,"gene_name")
+# scaling data
+topgenes <- scale(topgenes)
+#"BrBG"
+color <- rev(colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(15))
+breaks <- c(seq(min(topgenes,na.rm = T),-0.1,length.out = 7),0,seq(0.1,max(topgenes,na.rm = T),length.out = 7))
+```
+
+```{r fig.height=15}
+dim(topgenes)
+png(file= paste0(outdir,"heatmap-topgenes-qval.png"), width = 800, height = 800)
+  pheatmap(topgenes,
+          main = str_c("Genes with q-value less than ",qval_cutoff, " (ngenes = ",dim(topgenes)[1], ")"),
+          color = color,
+          breaks = breaks,
+          fontsize_row = 7,
+          fontsize_col = 10,
+          cluster_rows = T,
+          clustering_distance_rows = "euclidean",
+          clustering_method = "ward.D",
+          cluster_cols = T,
+          cutree_rows = 2,
+          show_colnames = T,
+          show_rownames = F,
+          border_color = NA)
+dev.off()
+```
+
+
+
+```{r}
+mo <-  genesqval %>% 
+  arrange(TE.random)
+mo <- rbind(head(mo,15), tail(mo,15))
+### logFC values from selected genes
+topgenes <- full_tables %>% 
+  filter(full_tables$gene_name %in% mo$X1) %>% 
+  dplyr::select(gene_name,contains("logFC")) %>% 
+  column_to_rownames(.,"gene_name") %>%
+  na.omit(.)
+topgenes <- scale(topgenes)
+color <- rev(colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(15))
+breaks <- c(seq(min(topgenes,na.rm = T),-0.1,length.out = 7),0,seq(0.1,max(topgenes,na.rm = T),length.out = 7))
+
+png(file= paste0(outdir,"heatmap-logFC-and-qval.png"))
+  pheatmap(topgenes,
+         main = str_c("The highest logFC and qval < " ,qval_cutoff , " (ngenes = ",dim(topgenes)[1], ")"),
+         color = color,
+         breaks = breaks,
+         fontsize_row = 9,
+         fontsize_col = 10,
+         cluster_rows = T,
+         clustering_distance_rows = "euclidean",
+         clustering_method = "ward.D",
+         cluster_cols = T,
+         cutree_rows = 2,
+         show_colnames = T,
+         border_color = NA)
+dev.off()
+```
+
+### MetaVolcano
+
+Using [Metavolcano](https://www.bioconductor.org/packages/release/bioc/vignettes/MetaVolcanoR/inst/doc/MetaVolcano.html) funcions to create a volcano plot with DE genes 
+
+We first need to create a list with tables. Each table contains information about gene `Symbol`, `Log2FC`, `pvalue`, `CI.L`, `CI.R` per experiment. 
+
+```{r}
+# colnames 
+df <- tibble(x=colnames(full_tables)) %>% 
+  separate(x, c("type", "SRA"), "_") %>% 
+  add_column(pos = 1:nrow(.))
+df$SRA[1] <- "Gene"
+# list
+split_df <- function(i){
+  df <- data.frame(gene_name = full_tables$gene_name[genes_emb],
+                   full_tables[genes_emb,which(df$SRA == i)]
+                   )
+  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R")
+  #colnames(df) <- gsub("_GSE.*", "", colnames(df) )
+  as.data.frame(df)
+  #as.data.frame(df)[-c(8359,18704),]
+  }
+diffexplist <- lapply(sort(unique(df$SRA)[-1]), split_df)
+names(diffexplist) <- sort(unique(df$SRA)[-1])
+```
+
+
+
+```{r}
+plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
+    meta_diffexp$randomPadj <- p.adjust(meta_diffexp$randomP, "BH")
+    irandomp <- 0.05
+    meta_diffexp %>%
+        dplyr::mutate(signcon2 = ifelse(`randomP` <= irandomp, signcon, NA)) %>%
+	dplyr::mutate(Ci.ub = ifelse(`randomP` <= irandomp, randomCi.ub, NA)) %>%
+	dplyr::mutate(Ci.lb = ifelse(`randomP` <= irandomp, randomCi.lb, NA)) %>%
+	dplyr::filter(`randomP` <  quantile(meta_diffexp[['randomP']], 0.6)) -> meta_res 
+    ggplot(dplyr::arrange(meta_res, abs(randomSummary)),
+        aes(x = randomSummary, y = -log10(randomPadj), color = signcon2, 
+	    text = !!rlang::sym(genecol))) +
+        geom_point(size = 0.6) +
+	scale_color_gradient2(midpoint=0, low="#195696", mid="white", 
+			      high="red", na.value = "grey80") +
+	labs(x = "Summary Fold-change",
+	     y = "-log10(Summary padj-value)",
+	     color = "Sign consistency") +
+        geom_errorbarh(aes(xmax = Ci.ub, xmin = Ci.lb, 
+			   color = signcon2)) +
+        theme_classic(14) +
+	theme(panel.border= element_blank()) +
+	theme(axis.text.x = element_text(angle = 0, vjust = 0.5)) +
+	theme(axis.line.x = element_line(color = "black", size = 0.6, 
+					 lineend = "square"),
+	      axis.line.y = element_line(color = "black", size = 0.6, 
+					 lineend = "square"))
+}
+```
+
+Now, we implement the `MetaVolcano` funtions. 
+
+```{r}
+meta_degs_rem <- rem_mv(diffexp=diffexplist,
+            pcriteria="pvalue",
+            foldchangecol='Log2FC', 
+            genenamecol='Symbol',
+            geneidcol=NULL,
+            collaps=FALSE,
+            llcol='CI.L',
+            rlcol='CI.R',
+            vcol=NULL, 
+            cvar=TRUE,
+            metathr=0.01,
+            jobname="MetaVolcano",
+            outputfolder=".",
+            draw='HTML',
+            ncores=1)
+meta_res <- meta_degs_rem@metaresult
+top <- head(meta_degs_rem@metaresult[order(meta_degs_rem@metaresult$randomP),], 30)
+top <- head(meta_degs_rem@metaresult, 3)
+meta_degs_rem@MetaVolcano <- plot_rem(meta_res, 
+               outputfolder="/mnt/Citosina/amedina/ssalazar/meta/out",
+               genecol = 'Symbol', 
+               metathr=0.01) +
+  #geom_label_repel(aes(label = ifelse(Symbol %in% top$Symbol, Symbol, "")),
+  geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
+                  max.overlaps = Inf,
+                  box.padding = 0.5,
+                  size = 4)
+pdf(file= paste0(outdir,"metavolcano.pdf"), width = 20, height = 20)
+  meta_degs_rem@MetaVolcano
+dev.off()
+meta_df <- meta_degs_rem@metaresult %>% 
+  filter(randomP < 0.05 )
+```
+
+Forest plot
+```{r}
+png(file= paste0(outdir,"forestplot-IFIT1.png"), width = 800, height = 800)
+  meta.plot("IFIT1")
+dev.off()
 png(file= paste0(outdir,"forestplot-IFI6.png"), width = 800, height = 800)
   meta.plot("IFI6")
 dev.off()
-png(file= paste0(outdir,"forestplot-IFI44L.png"), width = 800, height = 800)
-  meta.plot("IFI44L")
+png(file= paste0(outdir,"forestplot-IFIT3.png"), width = 800, height = 800)
+  meta.plot("IFIT3")
 dev.off()
+```
+
+
+
+```{r}
+# vote counting method
+meta_degs_vote <- votecount_mv(diffexp=diffexplist,
+                   pcriteria='pvalue',
+                   foldchangecol='Log2FC',
+                   genenamecol='Symbol',
+                   geneidcol=NULL,
+                   pvalue=0.05,
+                   foldchange=0, 
+                   metathr=0.01,
+                   collaps=FALSE,
+                   jobname="MetaVolcano", 
+                   outputfolder=".",
+                   draw='HTML')
+meta_degs_vote <- votecount_mv(diffexp=diffexplist,
+            pcriteria="pvalue",
+            foldchangecol='Log2FC', 
+            genenamecol='Symbol',
+            geneidcol=NULL,
+            collaps=FALSE,
+            #llcol='CI.L',
+            #rlcol='CI.R',
+            #vcol=NULL, 
+            #cvar=TRUE,
+            metathr=0.05,
+            jobname="MetaVolcano",
+            outputfolder=".",
+            draw='HTML')
+            #ncores=1)
+head(meta_degs_vote@metaresult, 3)
+meta_degs_vote@degfreq
+meta_degs_vote@MetaVolcano
 ```
