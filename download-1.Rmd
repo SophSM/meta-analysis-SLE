@@ -46,6 +46,35 @@ cd ../gene_sums/
 rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/unify_output/unify/SRP*.unify/gene_sums_per_study/* .
 cd ../junctions/
 rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/unify_output/unify/SRP*.unify/junction_counts_per_study/* .
+
+cd ../metadata
+mkdir -p 01 15 41 59 87
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/unify_output/unify/SRP311059.unify
+awk -v OFS='\t' '{ print $1,$2,$3,$3,"Homo sapiens","data_sources/metaSLE","data_sources/metaSLE","2022-05-30"} ' samples.tsv | sed '1d' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/metaSLE.recount_project.SRP311059.MD
+awk '{ print $3}' ids.tsv > /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/rail-ids.tsv
+while read -r line; do sed '1d' qc_1.tsv | awk -v OFS='\t' '{ print "line",$0}' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/metaSLE.recount_qc.SRP311059.MD; sed -i "s/line/$line/g" /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/metaSLE.recount_qc.SRP311059.MD; done </mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/rail-ids.tsv
+rm /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/59/SRP311059/rail-ids.tsv
+
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/unify_output/unify/SRP111941.unify
+mkdir -p /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941
+awk -v OFS='\t' '{ print $1,$2,$3,$3,"Homo sapiens","data_sources/metaSLE","data_sources/metaSLE","2022-05-30"} ' samples.tsv | sed '1d' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/metaSLE.recount_project.SRP111941.MD
+awk '{ print $3}' ids.tsv > /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/rail-ids.tsv
+while read -r line; do sed '1d' qc_1.tsv | awk -v OFS='\t' '{ print "line",$0}' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/metaSLE.recount_qc.SRP111941.MD; sed -i "s/line/$line/g" /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/metaSLE.recount_qc.SRP111941.MD; done </mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/rail-ids.tsv
+rm /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/41/SRP111941/rail-ids.tsv
+
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987/unify_output/unify/SRP296987.unify
+mkdir -p /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987
+awk -v OFS='\t' '{ print $1,$2,$3,$3,"Homo sapiens","data_sources/metaSLE","data_sources/metaSLE","2022-05-30"} ' samples.tsv | sed '1d' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/metaSLE.recount_project.SRP296987.MD
+awk '{ print $3}' ids.tsv > /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/rail-ids.tsv
+while read -r line; do sed '1d' qc_1.tsv | awk -v OFS='\t' '{ print "line",$0}' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/metaSLE.recount_qc.SRP296987.MD; sed -i "s/line/$line/g" /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/metaSLE.recount_qc.SRP296987.MD; done </mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/rail-ids.tsv
+rm /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/87/SRP296987/rail-ids.tsv
+
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP322015/unify_output/unify/SRP322015.unify
+mkdir -p /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015
+awk -v OFS='\t' '{ print $1,$2,$3,$3,"Homo sapiens","data_sources/metaSLE","data_sources/metaSLE","2022-05-30"} ' samples.tsv | sed '1d' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/metaSLE.recount_project.SRP322015.MD
+awk '{ print $3}' ids.tsv > /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/rail-ids.tsv
+while read -r line; do sed '1d' qc_1.tsv | awk -v OFS='\t' '{ print "line",$0}' >> /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/metaSLE.recount_qc.SRP322015.MD; sed -i "s/line/$line/g" /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/metaSLE.recount_qc.SRP322015.MD; done </mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/rail-ids.tsv
+rm /mnt/Citosina/amedina/ssalazar/meta/monorail/human/data_sources/metaSLE/metadata/15/SRP322015/rail-ids.tsv
 ```
 
 
