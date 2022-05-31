@@ -9,8 +9,47 @@ output: html_document
 
 With this script, each study is retrieved from the Recount3 database and turned into a RangedSummarizedExperiment-class (rse) object.
 
+## Integrating monorail-external processed data
+
 ```{bash}
 qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/monorail/
+mkdir human
+cd human
+mkdir -p annotations data_sources
+cd annotations
+mkdir -p exon_sums gene_sums
+cd exon_sums
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.G029.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.G026.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.R109.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.F006.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.SIRV.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/exon_sums/human.exon_sums.ERCC.gtf.gz
+cd ../gene_sums
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.G029.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.G026.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.R109.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.F006.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.SIRV.gtf.gz
+wget http://duffel.rail.bio/recount3/human/new_annotations/gene_sums/human.gene_sums.ERCC.gtf.gz
+
+cd ../../data_sources
+mkdir metaSLE
+cd metaSLE
+mkdir -p base_sums exon_sums gene_sums junctions metadata
+cd base_sums
+rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/pump_output/SRR*/*.all.bw .
+cd ../exon_sums
+rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/unify_output/unify/SRP*.unify/exon_sums_per_study/* .
+cd ../gene_sums/
+rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/unify_output/unify/SRP*.unify/gene_sums_per_study/* .
+cd ../junctions/
+rsync --progress -rav /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP*/unify_output/unify/SRP*.unify/junction_counts_per_study/* .
+```
+
+
+```{bash}
 cd /mnt/Citosina/amedina/ssalazar/meta/out
 module load r/4.0.2
 R
@@ -21,6 +60,7 @@ R
 ```{r}
 library("recount3")
 ```
+
 
 ## Downloading and curating function
 

@@ -273,6 +273,7 @@ for (i in gm) {
   #dat$country <- gse_table$COUNTRY
   
   # meta analysis with random models "REML"
+  # https://www.rdocumentation.org/packages/meta/versions/4.9-6/topics/metagen
   m1 <- metagen(TE = yi, 
                   seTE = sei, 
                   studlab = study, 
@@ -519,7 +520,7 @@ png(file= paste0(outdir,"forestplot-IFIT3.png"), width = 800, height = 800)
 dev.off()
 ```
 
-
+## Vote counting approach
 
 ```{r}
 # vote counting method
