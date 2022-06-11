@@ -10,6 +10,18 @@ output: html_document
 For each experiment a new column `DISEASE` is added in order to get uniform information about the disease status of each sample, this is done manually for each study to account for each author's way of classifiying their samples.
 
 ```{bash}
+cd /mnt/Citosina/amedina/ssalazar/meta/data
+# SRP111941
+awk -F '\t' -v OFS='\t' '{print $1,$25}' SraRunTable-SRP111941.tsv > info-SRP111941.tsv
+# SRP296987
+awk -F '\t' -v OFS='\t' '{print $1,$25}' SraRunTable-SRP296987.tsv > info-SRP296987.tsv
+# SRP311059
+awk -F '\t' -v OFS='\t' '{print $1,$14}' SraRunTable-SRP311059.tsv > info-SRP311059.tsv
+# SRP322015
+awk -F '\t' -v OFS='\t' '{print $1,$24}' SraRunTable-SRP322015.tsv > info-SRP322015.tsv
+```
+
+```{bash}
 qlogin
 cd /mnt/Citosina/amedina/ssalazar/meta/out
 module load r/4.0.2
@@ -80,10 +92,8 @@ description that each authors used to describe SLE or control samples.
 ## `r names(curation)[1] `
 
 ```{r}
-i <- 1
-rse_object <- curation[i]
-print(SRA_ID <- SRA_projects[i])
-rse_gene <- rse_object$SRP168421
+i <- 3
+rse_gene <- curation[[i]]
 
 # identify the way authors described SLE or CONTROLS
 rse_gene$sra_attribute.disease
@@ -103,10 +113,8 @@ curation[i] <- rse_gene
 ## `r names(norm)[2] `
 
 ```{r}
-i <- 2
-rse_object <- curation[i]
-print(SRA_ID <- SRA_projects[i])
-rse_gene <- rse_object$SRP062966
+i <- 4
+rse_gene <- curation[[i]]
 
 # identify the way authors described SLE or CONTROLS
 rse_gene$sra_attribute.disease_status
@@ -119,6 +127,61 @@ table(rse_gene$DISEASE)
 df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
 
 
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
+
+
+
+
+```{r}
+# SRP111941
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP111941.tsv", header = T, sep= '\t')
+i <- 1
+sra_info$subject_status <- as.factor(sra_info$subject_status)
+rse_gene <- curation[[i]]
+rse_gene$DISEASE <- factor(ifelse(sra_info$subject_status == "SLE patient", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
+
+```{r}
+# SRP296987
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP296987.tsv", header = T, sep= '\t')
+i <- 2
+sra_info$source_name <- as.factor(sra_info$source_name)
+rse_gene <- curation[[i]]
+rse_gene$DISEASE <- factor(ifelse(sra_info$source_name == "systemic lupus erythematosus", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
+
+```{r}
+# SRP311059
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP311059.tsv", header = T, sep= '\t')
+i <- 5
+sra_info$Diagnosis <- as.factor(sra_info$Diagnosis)
+rse_gene <- curation[[i]]
+rse_gene$DISEASE <- factor(ifelse(sra_info$Diagnosis == "SLE patient", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
+
+```{r}
+# SRP322015
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP322015.tsv", header = T, sep= '\t')
+i <- 6
+sra_info$source_name <- as.factor(sra_info$source_name)
+rse_gene <- curation[[i]]
+rse_gene$DISEASE <- factor(ifelse(sra_info$source_name == "Tibetan SLE patients", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
 # overwritting curated rse object
 curation[i] <- rse_gene
 ```
