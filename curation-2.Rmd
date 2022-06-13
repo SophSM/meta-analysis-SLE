@@ -65,24 +65,17 @@ Function to create a tibble with metadata information of each study.
 df <- tibble("SRA"= NA,
              "CONTROL" = NA,
              "SLE" = NA,
-             #"COUNTRY" = NA,
-             #"SUBMISSION_DATE" = NA,
-             #"PLATFORM" = NA,
              "NUM_GENES" = NA
              #"H_AGE_MEAN" = NA,
              #"H_AGE_MEDIAN" = NA,
              #"H_AGE_RANGE" = NA,
              #"H_SEX_F" = NA,
              #"H_SEX_M" = NA,
-             #"H_SMOKING_STATUS" = NA,
-             #"H_PACKYEAR" = NA,
              #"SLE_AGE_MEAN" = NA,
              #"SLE_AGE_MEDIAN" = NA,
              #"SLE_AGE_RANGE" = NA,
              #"SLE_SEX_F" = NA,
              #"SLE_SEX_M" = NA,
-             #"SLE_SMOKING_STATUS" = NA,
-             #"SLE_PACKYEAR" = NA
                  )
 ```
 
