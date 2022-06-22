@@ -23,6 +23,7 @@ library("recount3")
 library(edgeR)
 library(tidyverse)
 library(limma)
+library(DESeq2)
 ```
 
 ## Differential expression
@@ -32,44 +33,98 @@ Getting the normalized `DGEList` objects obtained from previous `normalization.R
 
 ```{r}
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
-DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/normalized_dge.xz")
-rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+# DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/normalized_dge.xz")
+dge_1 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz")
+dge_2 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz")
+rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+# copy to overwrite
+DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
 
 The following function performs the DE analysis for each `DGEList` given as input.
 
 ```{r}
-do_DE <- function(dge, rse_gene){
-  design <- model.matrix(as.formula(~ 1 + DISEASE), data = colData(rse_gene))
+do_limma <- function(dge, rse_gene){
+  design <- model.matrix(as.formula(~ DISEASE), data = colData(rse_gene))
   # "When the library sizes are quite variable between samples, then the voom approach is theoretically more powerful than limma-trend."
   vGene <- voom(dge, design, plot = F)
   # eBayes in lmFit model
   eb_results <- eBayes(lmFit(vGene))
   print(colnames(coef(lmFit(vGene))))
-  # It gets the genes with the p-values
-  volcanoplot(eb_results,coef = 2, highlight=20, pch=20)
-  de_results <- topTable(eb_results, p.value = 1, coef = ncol(design), number = nrow(rse_gene), confint = T)
+  # volcanoplot(eb_results,coef = 2, highlight=20, pch=20)
+  de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_gene), sort.by = "none")
   # formatting it as a tibble
   res <- as_tibble(de_results,rownames="rownames")
 }
 ```
 
-Applying the function
+```{r}
+ do_DESeq <-function(rse){ 
+  dds <- DESeqDataSet(rse, ~DISEASE)
+  keep <- rowSums(counts(dds)) >= 10
+  dds <- dds[keep,]
+  dds <- DESeq(dds, test = "Wald")
+  res <- results(dds)
+  res <- as_tibble(res, rownames="rownames")
+ }
+```
+
+Applying the functions
 
 ```{r}
-for(i in 1:length(SRA_projects)){
-  rse_object <- rse_curated[i]
-  rse <- rse_object[[1]]
-  dge_object <- DE_analysis[i]
+#for(i in 1:length(SRA_projects)){
+  #rse_object <- rse_curated[i]
+  #rse <- rse_object[[1]]
+  #dge_object <- DE_analysis[i]
   # apply the function to the rse object inside each list name
-  DE_result <- lapply(dge_object, do_DE, rse_gene = rse)
+  #DE_result <- lapply(dge_object, do_DE, rse_gene = rse)
+  #DE_bayes_result <- lapply(rse, do_DE_bayes)
+  #DE_bayes_result <- lapply(dge_object, do_DE_bayes, rse_gene = rse)
   # renaming colnames with the SRA id
-  colnames(DE_result[[1]]) <- str_c(colnames(DE_result[[1]]),"_", names(rse_curated[i]))
+  #colnames(DE_result[[1]]) <- str_c(colnames(DE_result[[1]]),"_", names(rse_curated[i]))
+  
+  #colnames(DE_bayes_result[[1]]) <- str_c(colnames(DE_bayes_result[[1]]),"_", names(rse_curated[i]))
    # saving as csv
-  write_csv(as.data.frame(DE_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE/Table_Genes_", names(rse_curated[i]), ".csv"))
+  #write_csv(as.data.frame(DE_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE/Table_Genes_", names(rse_curated[i]), ".csv"))
+  #write_csv(as.data.frame(DE_bayes_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE_bayes/Table_Genes_", names(rse_curated[i]), ".csv"))
   # overwriting DE_analysis[i] to use later
-  DE_analysis[i] <- DE_result
-}
+  #DE_analysis[i] <- DE_result
+#}
+```
+
+Limma for SRP296987 & SRP062966
+
+```{r}
+DE_analysis$SRP296987 <- do_limma(dge_1, rse_gene = rse_curated$SRP296987)
+colnames(DE_analysis$SRP296987) <- str_c(colnames(DE_analysis$SRP296987),"_SRP296987")
+write_csv(as.data.frame(DE_analysis$SRP296987), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP296987.csv")
+
+DE_analysis$SRP062966 <- do_limma(dge_2, rse_gene = rse_curated$SRP062966)
+colnames(DE_analysis$SRP062966) <- str_c(colnames(DE_analysis$SRP062966),"_SRP062966")
+write_csv(as.data.frame(DE_analysis$SRP062966), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP062966.csv")
+```
+
+DESeq2 for other studies
+
+```{r}
+DE_analysis$SRP111941 <- do_DESeq(rse_curated$SRP111941)
+colnames(DE_analysis$SRP111941) <- str_c(colnames(DE_analysis$SRP111941),"_SRP111941")
+write_csv(as.data.frame(DE_analysis$SRP111941), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP111941.csv")
+
+#DE_analysis$SRP062966 <- do_DESeq(rse_curated$SRP062966)
+# write_csv(as.data.frame(DE_analysis$SRP062966), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP062966.csv")
+
+DE_analysis$SRP311059 <- do_DESeq(rse_curated$SRP311059)
+colnames(DE_analysis$SRP311059) <- str_c(colnames(DE_analysis$SRP311059),"_SRP311059")
+write_csv(as.data.frame(DE_analysis$SRP311059), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP311059.csv")
+
+DE_analysis$SRP168421 <- do_DESeq(rse_curated$SRP168421)
+colnames(DE_analysis$SRP168421) <- str_c(colnames(DE_analysis$SRP168421),"_SRP168421")
+write_csv(as.data.frame(DE_analysis$SRP168421), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP168421.csv")
+
+DE_analysis$SRP322015 <- do_DESeq(rse_curated$SRP322015)
+colnames(DE_analysis$SRP322015) <- str_c(colnames(DE_analysis$SRP322015),"_SRP322015")
+write_csv(as.data.frame(DE_analysis$SRP322015), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP322015.csv")
 ```
 
 ## Session info
