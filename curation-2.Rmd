@@ -19,6 +19,11 @@ awk -F '\t' -v OFS='\t' '{print $1,$25}' SraRunTable-SRP296987.tsv > info-SRP296
 awk -F '\t' -v OFS='\t' '{print $1,$14}' SraRunTable-SRP311059.tsv > info-SRP311059.tsv
 # SRP322015
 awk -F '\t' -v OFS='\t' '{print $1,$24}' SraRunTable-SRP322015.tsv > info-SRP322015.tsv
+# SRP073191
+awk -F '\t' -v OFS='\t' '{print $1,$13}' SraRunTable-SRP073191.tsv > info-SRP073191.tsv
+# SRP136102
+awk -F '\t' -v OFS='\t' '{print $1,$13}' SraRunTable-SRP136102.tsv > info-SRP136102.tsv
+
 ```
 
 ```{bash}
@@ -52,7 +57,7 @@ obtainInfo <- function(df, rse_gene, name){
     "SRA" = name,
     "CONTROL" = as.numeric(table(rse_gene$DISEASE)[1]),
     "SLE" = as.numeric(table(rse_gene$DISEASE)[2]),
-    "NUM_GENES" = dim(rse_gene)[1]
+    "NUM_GENES" = as.numeric(table((assays(rse_gene)$counts != 0))["TRUE"])
   )
 }
 ```
@@ -82,10 +87,9 @@ df <- tibble("SRA"= NA,
 We will add a new column and use controlled vocabulary, so we will change the 
 description that each authors used to describe SLE or control samples.
 
-## `r names(curation)[1] `
-
 ```{r}
-i <- 3
+# SRP168421
+i <- 7
 rse_gene <- curation[[i]]
 
 # identify the way authors described SLE or CONTROLS
@@ -103,10 +107,10 @@ df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
 curation[i] <- rse_gene
 ```
 
-## `r names(norm)[2] `
 
 ```{r}
-i <- 4
+# SRP062966
+i <- 8
 rse_gene <- curation[[i]]
 
 # identify the way authors described SLE or CONTROLS
@@ -125,7 +129,45 @@ curation[i] <- rse_gene
 ```
 
 
+```{r}
+# SRP073191
+i <- 5
+rse_gene <- curation[[i]]
 
+# identify the way authors described SLE or CONTROLS
+rse_gene$sra_attribute.disease_state
+rse_gene$sra_attribute.disease_state <- as.factor(rse_gene$sra_attribute.disease_state)
+
+# creating a DISEASE column
+rse_gene$DISEASE <- factor(ifelse(rse_gene$sra_attribute.disease_state == "Systemic lupus erythematosus", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
+
+
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
+
+```{r}
+# SRP136102
+i <- 6
+rse_gene <- curation[[i]]
+
+# identify the way authors described SLE or CONTROLS
+rse_gene$sra_attribute.phenotype
+rse_gene$sra_attribute.phenotype <- as.factor(rse_gene$sra_attribute.phenotype)
+
+# creating a DISEASE column
+rse_gene$DISEASE <- factor(ifelse(rse_gene$sra_attribute.phenotype == "SLE", "SLE", "CONTROL"))
+table(rse_gene$DISEASE)
+
+df<- obtainInfo(df, rse_gene = rse_gene, name=names(curation[i]))
+
+
+# overwritting curated rse object
+curation[i] <- rse_gene
+```
 
 ```{r}
 # SRP111941
@@ -156,7 +198,7 @@ curation[i] <- rse_gene
 ```{r}
 # SRP311059
 sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP311059.tsv", header = T, sep= '\t')
-i <- 5
+i <- 3
 sra_info$Diagnosis <- as.factor(sra_info$Diagnosis)
 rse_gene <- curation[[i]]
 rse_gene$DISEASE <- factor(ifelse(sra_info$Diagnosis == "SLE patient", "SLE", "CONTROL"))
@@ -169,7 +211,7 @@ curation[i] <- rse_gene
 ```{r}
 # SRP322015
 sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP322015.tsv", header = T, sep= '\t')
-i <- 6
+i <- 4
 sra_info$source_name <- as.factor(sra_info$source_name)
 rse_gene <- curation[[i]]
 rse_gene$DISEASE <- factor(ifelse(sra_info$source_name == "Tibetan SLE patients", "SLE", "CONTROL"))

@@ -37,7 +37,7 @@ library("biomaRt")
 full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mergedTables_symbol.csv")
 
 colnames(full_tables)
-rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 ```
 
@@ -488,7 +488,7 @@ mv <- votecount_mv(diffexp = diffexplist,
   pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = FALSE,
   jobname = "MetaVolcano", outputfolder = ".", draw = "HTML")
 head(mv@metaresult, 10)
-top <- head(mv@metaresult[order(mv@metaresult$randomP),], 30)
+# top <- head(mv@metaresult[order(mv@metaresult$randomP),], 30)
 
 ####
 ## Combining approach

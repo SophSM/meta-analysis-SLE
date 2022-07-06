@@ -88,6 +88,22 @@ dge_result <- get_dge(rse_object)
 saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz", compress = "xz")
 ```
 
+For SRP073191
+```{r}
+rse_object <- curated$SRP073191
+dge_result <- get_dge(rse_object)
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz", compress = "xz")
+ # png(file = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/PC-MDSplot_SRP073191.png", width = 800, height = 800)
+  # plotMDS(dge_result, labels = rse_object$sra_attribute.group, col=ifelse(rse_object$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
+  # dev.off()
+```
+
+For SRP136102
+```{r}
+rse_object <- curated$SRP136102
+dge_result <- get_dge(rse_object)
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP136102_dge.xz", compress = "xz")
+```
 
 ## Batch correction for SRP168421
 
