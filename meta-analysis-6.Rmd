@@ -34,8 +34,8 @@ library("biomaRt")
 ## Read data
 
 ```{r}
-full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mergedTables_symbol.csv")
-
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_protein_coding.csv")
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/protein_coding.csv")
 colnames(full_tables)
 rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
@@ -52,6 +52,7 @@ all_genes <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol","transcript_b
                           values = tab$ID,
                           #values = list(biotype=c("protein_coding")), 
                           mart = mart)
+all_genes<-all_genes[all_genes$transcript_biotype == "protein_coding", ]
 genes_emb <- tab$gene_name %in% all_genes$hgnc_symbol
 ```
 
@@ -434,14 +435,13 @@ split_df <- function(i){
   gene_name = unique(tab$gene_name)[genes_emb],
                   tab[genes_emb,which(df$SRA == i)]
                    )
-  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R")
-  #colnames(df) <- gsub("_GSE.*", "", colnames(df) )
+  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R") # , "logFC.SE")
   as.data.frame(df)
-  #as.data.frame(df)[-c(8359,18704),]
-  }
+}
 diffexplist <- lapply(sort(unique(df$SRA)[-1]), split_df)
 names(diffexplist) <- sort(unique(df$SRA)[-1])
-
+# write_csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/diffexplist.csv")
+write_csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_diffexplist_protein_coding.csv")
 ```
 
 
@@ -479,20 +479,20 @@ plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
 Now, we implement the `MetaVolcano` funtions. 
 
 ```{r}
-
+diffexplist <- read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/diffexplist_protein_coding.csv")
 ## Vote counting approach
-data(diffexplist)
 mv <- votecount_mv(diffexp = diffexplist,
              pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
-  pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = FALSE,
-  jobname = "MetaVolcano", outputfolder = ".", draw = "HTML")
+  pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = T,
+  jobname = "MetaVolcano_limma_protein", outputfolder = ".", draw = "HTML")
 head(mv@metaresult, 10)
+write_csv(as.data.frame(mv@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/vote_counting_limma_protein_coding.csv") 
 # top <- head(mv@metaresult[order(mv@metaresult$randomP),], 30)
 
 ####
 ## Combining approach
-meta_degs_comb <- combining_mv(diffexplist)
+
 meta_degs_comb <- combining_mv(diffexp=diffexplist,
                    pcriteria='pvalue', 
                    foldchangecol='Log2FC',
@@ -500,8 +500,8 @@ meta_degs_comb <- combining_mv(diffexp=diffexplist,
                    geneidcol=NULL,
                    metafc='Mean',
                    metathr=0.01, 
-                   collaps=FALSE,
-                   jobname="MetaVolcano",
+                   collaps=T,
+                   jobname="MetaVolcano_protein",
                    outputfolder=".",
                    draw='HTML')
 head(meta_degs_comb@metaresult, 3)
@@ -509,8 +509,8 @@ head(meta_degs_comb@metaresult, 3)
 ###
 meta_degs_rem <- rem_mv(diffexp = diffexplist, pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
-  collaps = FALSE, llcol = "CI.L", rlcol = "CI.R", vcol = NULL,
-  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano",
+  collaps = T, llcol = "CI.L", rlcol = "CI.R", vcol = NULL,
+  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano_limma_protein",
   outputfolder = ".", draw = "HTML")
 
 meta_res <- meta_degs_rem@metaresult

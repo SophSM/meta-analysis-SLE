@@ -33,7 +33,8 @@ Getting the normalized `DGEList` objects obtained from previous `normalization.R
 
 ```{r}
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
-# DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/normalized_dge.xz")
+
+DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz")
 dge_1 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz")
 dge_2 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz")
 dge_3 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz")
@@ -41,6 +42,7 @@ dge_4 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP136102_dge.xz")
 rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 # copy to overwrite
 DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+all_limma <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
 
 The following function performs the DE analysis for each `DGEList` given as input.
@@ -73,25 +75,23 @@ do_limma <- function(dge, rse_gene){
 
 Applying the functions
 
+All limma
+
 ```{r}
-#for(i in 1:length(SRA_projects)){
-  #rse_object <- rse_curated[i]
-  #rse <- rse_object[[1]]
-  #dge_object <- DE_analysis[i]
+for(i in 1:length(SRA_projects)){
+  rse_object <- rse_curated[i]
+  rse <- rse_object[[1]]
+  dge_object <- DE_analysis[i]
   # apply the function to the rse object inside each list name
-  #DE_result <- lapply(dge_object, do_DE, rse_gene = rse)
-  #DE_bayes_result <- lapply(rse, do_DE_bayes)
-  #DE_bayes_result <- lapply(dge_object, do_DE_bayes, rse_gene = rse)
+  DE_result <- lapply(dge_object, do_limma, rse_gene = rse)
   # renaming colnames with the SRA id
-  #colnames(DE_result[[1]]) <- str_c(colnames(DE_result[[1]]),"_", names(rse_curated[i]))
-  
-  #colnames(DE_bayes_result[[1]]) <- str_c(colnames(DE_bayes_result[[1]]),"_", names(rse_curated[i]))
+  colnames(DE_result[[1]]) <- str_c(colnames(DE_result[[1]]),"_", names(rse_curated[i]))
    # saving as csv
-  #write_csv(as.data.frame(DE_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE/Table_Genes_", names(rse_curated[i]), ".csv"))
+  write_csv(as.data.frame(DE_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/Table_Genes_", names(rse_curated[i]), ".csv"))
   #write_csv(as.data.frame(DE_bayes_result[[1]]), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/DE_bayes/Table_Genes_", names(rse_curated[i]), ".csv"))
   # overwriting DE_analysis[i] to use later
-  #DE_analysis[i] <- DE_result
-#}
+  DE_analysis[i] <- DE_result
+  }
 ```
 
 Limma for SRP296987, SRP062966, SRP073191, SRP136102

@@ -33,6 +33,7 @@ Getting the curated rse objects obtained from previous `curation.Rmd`.
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
 curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
 normalization <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+limma_all <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
 
 Function for creating a `dge` object for each `rse` object.
@@ -52,6 +53,23 @@ get_dge <- function(rse){
 
 
 Performing normalization 
+
+## limma method for all studies
+
+```{r}
+for(i in 1:length(SRA_projects)){
+  rse_object <- limma_all[i]
+  # apply the function to the rse object inside each list name
+  dge_result <- lapply(rse_object, get_dge)
+  # overwriting each list element for the dge object
+  limma_all[i] <- dge_result
+}
+
+saveRDS(limma_all, file = "/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz", compress = "xz")
+```
+
+
+## Different methods for each study
 
 For study SRP296987
 
