@@ -34,11 +34,15 @@ library("biomaRt")
 ## Read data
 
 ```{r}
-full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_protein_coding.csv")
-full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/protein_coding.csv")
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_protein_coding.csv")
+# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_protein_coding.csv")
+# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_protein_coding.csv")
+# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/protein_coding.csv")
 colnames(full_tables)
 rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+# SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
+SRA_info<-SRA_info %>% remove_rownames %>% column_to_rownames(var="SRA")
 ```
 
 
@@ -61,7 +65,9 @@ genes_emb <- tab$gene_name %in% all_genes$hgnc_symbol
 We first check pvalues histograms. [Ref](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6164648/)
 
 ```{r}
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/"
+# with different normalization methods 
+#outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures1/"
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures_mix2/"
 FC <- str_subset(colnames(full_tables),"logFC")
 # Genes with a adjusted p value
 adjp <- full_tables %>%
@@ -146,7 +152,7 @@ decorate_annotation("intersection_size", {
 dev.off()
 
 comb_size(m)
-sample(up$gene_name[extract_comb(m,"10111")],)
+sample(up$gene_name[extract_comb(m,"10110")],)
 q
 ### DOWNREGULATED GENES
 
@@ -169,7 +175,7 @@ decorate_annotation("intersection_size", {
 })
 dev.off()
 comb_size(m)
-sample(up$gene_name[extract_comb(m,"10111")],)
+sample(up$gene_name[extract_comb(m,"10110")],)
 ```
 
 ## Meta-analysis for a single gene
@@ -189,7 +195,7 @@ df <- full_tables %>%
   # arrange(ID, -Depth) %>%
   filter(duplicated(ID) == FALSE)
 FC <- str_subset(colnames(df),"logFC|log2FoldChange")
-SE <- str_subset(colnames(df),"SE_")
+SE <- str_subset(colnames(df),"lfcSE_")
 SRA <- gsub(".*_","",FC)
 ## Function to perform a meta-analysis per gene
 meta.plot <- function(gs){
@@ -244,8 +250,7 @@ meta.plot <- function(gs){
 Saving the results in a new dataframe.
 
 ```{r}
-#gs <- unique(na.omit(full_tables)$GENE.SYMBOL)
-gs <- df$gene_name
+datos <- df %>% drop_na(gene_name)
 meta <- data.frame(genes = 0,
                    TE.random = 0,
                    pval.random = 0,
@@ -262,12 +267,11 @@ meta <- data.frame(genes = 0,
 #                    tau2=0,
 #                    I2=0,
 #                    n-um_exp=0)
-gm <- df$gene_name
-df[df == 0] <- NA
+gm <- (datos$gene_name)
+datos[datos == 0] <- NA
 length(gm) 
 for (i in gm) { 
-#for( i in gm[18705:length(gm)]){ #problemas con 
-  gene <- df[which(df$gene_name == i),]
+  gene <- df[which(datos$gene_name == i),]
   dat <- data.frame(
     yi = as.numeric(gene[,FC][1,]),
     sei = as.numeric(gene[,SE][1,]),
@@ -275,7 +279,6 @@ for (i in gm) {
     n2i = as.numeric(SRA_info$SLE)
   )
   dat$study <- rownames(SRA_info)
-  #dat$country <- gse_table$COUNTRY
   
   # meta analysis with random models "REML"
   # https://www.rdocumentation.org/packages/meta/versions/4.9-6/topics/metagen
@@ -289,25 +292,30 @@ for (i in gm) {
                   prediction = TRUE,
                   sm= "MD",
                   control=list(maxiter=1000), # increasing number of iteration
-                  comb.fixed = FALSE)
-  # res <- suppressWarnings(metafor::rma(yi, sei=sei,control=list(stepadj=.5,maxiter=1000)))
+                  fixed = FALSE)
   num_exp <- sum(!is.na(dat$yi))
   meta <- rbind(meta,
                 c(i, m1$TE.random,m1$pval.random,m1$tau2,m1$I2,m1$pval.Q,num_exp))
-  #meta <- rbind(meta,c(i,res$QEp,res$beta,res$pval,res$se,res$H2,res$tau2,res$I2,num_exp))
 }
+
+
 # Numeric values
 meta <- meta[-1,]
-rownames(meta) <- meta$gene
-meta <- meta[,-1] %>% mutate_all(as.numeric)
-# FDR correction
-meta$qval.random <- p.adjust(meta$pval.random,method="fdr")
-meta$qval.Q <- p.adjust(meta$pval.Q, method = "fdr")
+metau <- meta[!duplicated(meta$gene),]
+metau <- metau[-1,]
+rownames(metau) <- metau$gene
+metau <- metau[,-1] %>% mutate_all(as.numeric)
+# FDR (false discovery rate) correction
+metau$qval.random <- p.adjust(metau$pval.random,method="fdr")
+metau$qval.Q <- p.adjust(metau$pval.Q, method = "fdr")
+# head(metau[,1])
+
 ```
 
 ### Output of full genes meta-analysis
+
 ```{r}
-write.csv(meta, file ="/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
+write.csv(metau, file ="/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
 ```
 
 ```{r}
@@ -349,7 +357,7 @@ genesqval <- meta %>%
   filter(meta$qval.random <= qval_cutoff & I2 < 0.60 & num_exp > 1) %>% 
   arrange(TE.random)
 genesqval
-kable(c(head(genesqval),tail(genesqval)), caption = "Meta-analysis")
+# kable(c(head(genesqval),tail(genesqval)), caption = "Meta-analysis")
 
 ### logFC values from selected genes
 topgenes <- full_tables %>% 
@@ -364,58 +372,6 @@ color <- rev(colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(15))
 breaks <- c(seq(min(topgenes,na.rm = T),-0.1,length.out = 7),0,seq(0.1,max(topgenes,na.rm = T),length.out = 7))
 ```
 
-```{r fig.height=15}
-dim(topgenes)
-png(file= paste0(outdir,"heatmap-topgenes-qval.png"), width = 800, height = 800)
-  pheatmap(topgenes,
-          main = str_c("Genes with q-value less than ",qval_cutoff, " (ngenes = ",dim(topgenes)[1], ")"),
-          color = color,
-          breaks = breaks,
-          fontsize_row = 7,
-          fontsize_col = 10,
-          cluster_rows = T,
-          clustering_distance_rows = "euclidean",
-          clustering_method = "ward.D",
-          cluster_cols = T,
-          cutree_rows = 2,
-          show_colnames = T,
-          show_rownames = F,
-          border_color = NA)
-dev.off()
-```
-
-
-
-```{r}
-mo <-  genesqval %>% 
-  arrange(TE.random)
-mo <- rbind(head(mo,15), tail(mo,15))
-### logFC values from selected genes
-topgenes <- full_tables %>% 
-  filter(full_tables$gene_name %in% mo$X1) %>% 
-  dplyr::select(gene_name,contains("logFC")) %>% 
-  column_to_rownames(.,"gene_name") %>%
-  na.omit(.)
-topgenes <- scale(topgenes)
-color <- rev(colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(15))
-breaks <- c(seq(min(topgenes,na.rm = T),-0.1,length.out = 7),0,seq(0.1,max(topgenes,na.rm = T),length.out = 7))
-
-png(file= paste0(outdir,"heatmap-logFC-and-qval.png"))
-  pheatmap(topgenes,
-         main = str_c("The highest logFC and qval < " ,qval_cutoff , " (ngenes = ",dim(topgenes)[1], ")"),
-         color = color,
-         breaks = breaks,
-         fontsize_row = 9,
-         fontsize_col = 10,
-         cluster_rows = T,
-         clustering_distance_rows = "euclidean",
-         clustering_method = "ward.D",
-         cluster_cols = T,
-         cutree_rows = 2,
-         show_colnames = T,
-         border_color = NA)
-dev.off()
-```
 
 ### MetaVolcano
 
@@ -435,13 +391,13 @@ split_df <- function(i){
   gene_name = unique(tab$gene_name)[genes_emb],
                   tab[genes_emb,which(df$SRA == i)]
                    )
-  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R") # , "logFC.SE")
+  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R", "logFC.SE")
   as.data.frame(df)
 }
 diffexplist <- lapply(sort(unique(df$SRA)[-1]), split_df)
 names(diffexplist) <- sort(unique(df$SRA)[-1])
 # write_csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/diffexplist.csv")
-write_csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_diffexplist_protein_coding.csv")
+write.csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_diffexplist_protein_coding.csv")
 ```
 
 
@@ -479,16 +435,19 @@ plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
 Now, we implement the `MetaVolcano` funtions. 
 
 ```{r}
-diffexplist <- read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/diffexplist_protein_coding.csv")
 ## Vote counting approach
 mv <- votecount_mv(diffexp = diffexplist,
              pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
-  pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = T,
-  jobname = "MetaVolcano_limma_protein", outputfolder = ".", draw = "HTML")
+  pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = TRUE,
+  jobname = "MetaVolcano_mix2", outputfolder = ".", draw = "HTML")
+# diffexplist <- read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_diffexplist_protein_coding.csv")
 head(mv@metaresult, 10)
-write_csv(as.data.frame(mv@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/vote_counting_limma_protein_coding.csv") 
+write_csv(as.data.frame(mv@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/vote_counting_mix_protein_coding.csv") 
 # top <- head(mv@metaresult[order(mv@metaresult$randomP),], 30)
+pdf(file= paste0(outdir,"vote_metavolcano.pdf"), width = 20, height = 20)
+  mv@MetaVolcano
+dev.off()
 
 ####
 ## Combining approach
@@ -510,7 +469,7 @@ head(meta_degs_comb@metaresult, 3)
 meta_degs_rem <- rem_mv(diffexp = diffexplist, pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
   collaps = T, llcol = "CI.L", rlcol = "CI.R", vcol = NULL,
-  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano_limma_protein",
+  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano_mix2_protein",
   outputfolder = ".", draw = "HTML")
 
 meta_res <- meta_degs_rem@metaresult
@@ -525,58 +484,75 @@ meta_degs_rem@MetaVolcano <- plot_rem(meta_res,
                   max.overlaps = Inf,
                   box.padding = 0.5,
                   size = 4)
-pdf(file= paste0(outdir,"metavolcano.pdf"), width = 20, height = 20)
+pdf(file= paste0(outdir,"rem_metavolcano.pdf"), width = 20, height = 20)
   meta_degs_rem@MetaVolcano
 dev.off()
 meta_df <- meta_degs_rem@metaresult %>% 
   filter(randomP < 0.05 )
 ```
 
-Forest plot
-```{r}
-png(file= paste0(outdir,"forestplot-RPS4Y2.png"), width = 800, height = 800)
-  meta.plot("RPS4Y2")
-dev.off()
-png(file= paste0(outdir,"forestplot-ZFY-AS.png"), width = 800, height = 800)
-  meta.plot("ZFY-AS")
-dev.off()
-png(file= paste0(outdir,"forestplot-PTPN21.png"), width = 800, height = 800)
-  meta.plot("PTPN21")
-dev.off()
-```
 
-## Vote counting approach
+## GO analysis
 
 ```{r}
-# vote counting method
-meta_degs_vote <- votecount_mv(diffexp=diffexplist,
-                   pcriteria='pvalue',
-                   foldchangecol='Log2FC',
-                   genenamecol='Symbol',
-                   geneidcol=NULL,
-                   pvalue=0.05,
-                   foldchange=0, 
-                   metathr=0.01,
-                   collaps=FALSE,
-                   jobname="MetaVolcano", 
-                   outputfolder=".",
-                   draw='HTML')
-meta_degs_vote <- votecount_mv(diffexp=diffexplist,
-            pcriteria="pvalue",
-            foldchangecol='Log2FC', 
-            genenamecol='Symbol',
-            geneidcol=NULL,
-            collaps=FALSE,
-            #llcol='CI.L',
-            #rlcol='CI.R',
-            #vcol=NULL, 
-            #cvar=TRUE,
-            metathr=0.05,
-            jobname="MetaVolcano",
-            outputfolder=".",
-            draw='HTML')
-            #ncores=1)
-head(meta_degs_vote@metaresult, 3)
-meta_degs_vote@degfreq
-meta_degs_vote@MetaVolcano
+library(gprofiler2)
+library(forcats)
+resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/upregulated.csv", header = F)
+resSig<-resSig %>% remove_rownames %>% column_to_rownames(var="V1")
+DEG <- rownames(resSig)
+genes_universe <- as.vector(na.omit(full_tables$gene_name))
+gostres = gost(query = DEG, organism = "hsapiens", significant = T, 
+               correction_method = "fdr", domain_scope = "custom", 
+               custom_bg = genes_universe, ordered_query = TRUE)
+go <- as.data.frame(gostres$result)
+png(file = paste0(outdir,"upregulatedGO.png"),
+    width = 1800, height = 800)
+go %>%
+  dplyr::slice(1:15) %>%
+  select(p_value, term_name) %>%
+  mutate(go = fct_reorder(term_name, p_value)) %>%
+  ggplot( aes(x=go, y=p_value)) +
+  geom_bar(stat="identity", fill="#3A68AE", alpha=.6, width=.4) +
+  coord_flip() +
+  labs(x = "", y = "Adjusted P-value") +
+  theme_bw(base_size = 20)
+dev.off()
+
+
+resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/downregulated.csv", header = F)
+resSig<-resSig %>% remove_rownames %>% column_to_rownames(var="V1")
+DEG <- rownames(resSig)
+genes_universe <- as.vector(na.omit(full_tables$gene_name))
+gostres = gost(query = DEG, organism = "hsapiens", significant = T, 
+               correction_method = "fdr", domain_scope = "custom", 
+               custom_bg = genes_universe, ordered_query = TRUE)
+go <- as.data.frame(gostres$result)
+png(file = paste0(outdir,"downregulatedGO.png"),
+    width = 1800, height = 800)
+go %>%
+  dplyr::slice(1:15) %>%
+  select(p_value, term_name) %>%
+  mutate(go = fct_reorder(term_name, p_value)) %>%
+  ggplot( aes(x=go, y=p_value)) +
+  geom_bar(stat="identity", fill="#3A68AE", alpha=.6, width=.4) +
+  coord_flip() +
+  labs(x = "", y = "Adjusted P-value") +
+  theme_bw(base_size = 20)
+dev.off()
+
 ```
+
+## Forest plots
+
+```{r}
+# png(file= paste0(outdir,"forestplot-RPS4Y2.png"), width = 800, height = 800)
+  # meta.plot("RPS4Y2")
+# dev.off()
+# png(file= paste0(outdir,"forestplot-ZFY-AS.png"), width = 800, height = 800)
+  # meta.plot("ZFY-AS")
+# dev.off()
+# png(file= paste0(outdir,"forestplot-PTPN21.png"), width = 800, height = 800)
+  # meta.plot("PTPN21")
+# dev.off()
+```
+

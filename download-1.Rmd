@@ -77,6 +77,9 @@ downloads <- append(monorail, downloads, after = length(recount_avail))
 
 ```{r}
 saveRDS(downloads, file = "/mnt/Citosina/amedina/ssalazar/meta/out/downloads.xz", compress="xz")
+df <- as.data.frame(assays(curation$SRP322015)$counts)
+df <- tibble::rownames_to_column(df, "gene")
+write_csv(df, file= "/mnt/Citosina/amedina/ssalazar/meta/out/counts/SRP322015_counts.csv")
 ```
 
 

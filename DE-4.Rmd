@@ -34,7 +34,7 @@ Getting the normalized `DGEList` objects obtained from previous `normalization.R
 ```{r}
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
 
-DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz")
+# DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz")
 dge_1 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz")
 dge_2 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz")
 dge_3 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz")
@@ -75,7 +75,7 @@ do_limma <- function(dge, rse_gene){
 
 Applying the functions
 
-All limma
+Limma for all studies
 
 ```{r}
 for(i in 1:length(SRA_projects)){
@@ -155,6 +155,101 @@ DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
 DE_analysis$SRP322015 <- DE
 colnames(DE_analysis$SRP322015) <- str_c(colnames(DE_analysis$SRP322015),"_SRP322015")
 write_csv(as.data.frame(DE_analysis$SRP322015), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE2/Table_Genes_SRP322015.csv")
+```
+
+
+DESeq2 for all studies (06, 07, 16, 29, 32)
+
+```{r}
+# 16
+DE<- do_DESeq(rse_curated$SRP168421)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP168421 <- DE
+colnames(DE_analysis$SRP168421) <- str_c(colnames(DE_analysis$SRP168421),"_SRP168421")
+write_csv(as.data.frame(DE_analysis$SRP168421), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2/Table_Genes_SRP168421.csv")
+# 32
+DE <- do_DESeq(rse_curated$SRP322015)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP322015 <- DE
+colnames(DE_analysis$SRP322015) <- str_c(colnames(DE_analysis$SRP322015),"_SRP322015")
+write_csv(as.data.frame(DE_analysis$SRP322015), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2/Table_Genes_SRP322015.csv")
+
+# 06 
+assays(rse_curated$SRP062966)$raw_counts = NULL
+assays(rse_curated$SRP062966)$counts <- as.integer(assays(rse_curated$SRP062966)$counts)
+# counts <- gsub(",", "", (assays(rse_curated$SRP062966)$counts))
+# counts <- as.integer(counts)
+# assays(rse_curated$SRP062966, withDimnames=FALSE)$counts <- counts
+DE <- do_DESeq(rse_curated$SRP062966)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP062966 <- DE
+colnames(DE_analysis$SRP062966) <- str_c(colnames(DE_analysis$SRP062966),"_SRP062966")
+write_csv(as.data.frame(DE_analysis$SRP062966), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2/Table_Genes_SRP062966.csv")
+
+# 07
+assays(rse_curated$SRP073191)$raw_counts = NULL
+as.integer(assays(rse_curated$SRP073191)$counts)
+DE <- do_DESeq(rse_curated$SRP073191)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP073191 <- DE
+colnames(DE_analysis$SRP073191) <- str_c(colnames(DE_analysis$SRP073191),"_SRP073191")
+write_csv(as.data.frame(DE_analysis$SRP073191), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2/Table_Genes_SRP073191.csv")
+
+# 29
+DE <- do_DESeq(rse_curated$SRP296987)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP296987 <- DE
+colnames(DE_analysis$SRP296987) <- str_c(colnames(DE_analysis$SRP296987),"_SRP296987")
+write_csv(as.data.frame(DE_analysis$SRP296987), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2/Table_Genes_SRP296987.csv")
+
+```
+
+Mix 5 studies 06, 29, 07, 16, 32
+
+```{r}
+# 06
+DE <- do_limma(dge_2, rse_gene = rse_curated$SRP062966)
+DE$lfcSE <- (DE$CI.R-DE$CI.L)/(2*1.96)
+DE_analysis$SRP062966 <- DE
+colnames(DE_analysis$SRP062966) <- str_c(colnames(DE_analysis$SRP062966),"_SRP062966")
+write_csv(as.data.frame(DE_analysis$SRP062966), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix/Table_Genes_SRP062966.csv")
+
+# 29
+DE <- do_limma(dge_1, rse_gene = rse_curated$SRP296987)
+DE$lfcSE <- (DE$CI.R-DE$CI.L)/(2*1.96)
+DE_analysis$SRP296987 <- DE
+colnames(DE_analysis$SRP296987) <- str_c(colnames(DE_analysis$SRP296987),"_SRP296987")
+write_csv(as.data.frame(DE_analysis$SRP296987), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix/Table_Genes_SRP296987.csv")
+
+# 07
+assays(rse_curated$SRP073191)$raw_counts = NULL
+as.integer(assays(rse_curated$SRP073191)$counts)
+DE <- do_DESeq(rse_curated$SRP073191)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP073191 <- DE
+colnames(DE_analysis$SRP073191) <- str_c(colnames(DE_analysis$SRP073191),"_SRP073191")
+write_csv(as.data.frame(DE_analysis$SRP073191), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix/Table_Genes_SRP073191.csv")
+# 16
+DE<- do_DESeq(rse_curated$SRP168421)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP168421 <- DE
+colnames(DE_analysis$SRP168421) <- str_c(colnames(DE_analysis$SRP168421),"_SRP168421")
+write_csv(as.data.frame(DE_analysis$SRP168421), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix/Table_Genes_SRP168421.csv")
+
+# 32
+DE <- do_DESeq(rse_curated$SRP322015)
+DE$CI.L = DE$log2FoldChange - 1.96*DE$lfcSE
+DE$CI.R = DE$log2FoldChange + 1.96*DE$lfcSE
+DE_analysis$SRP322015 <- DE
+colnames(DE_analysis$SRP322015) <- str_c(colnames(DE_analysis$SRP322015),"_SRP322015")
+write_csv(as.data.frame(DE_analysis$SRP322015), file = "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix/Table_Genes_SRP322015.csv")
 ```
 
 ## Session info

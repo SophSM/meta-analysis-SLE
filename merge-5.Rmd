@@ -27,13 +27,21 @@ library(tidyverse)
 We will import DE results from all experiments. 
 
 ```{r}
-all_limma_files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma", full.names = T)
-all_limma_files <- gtools::mixedsort(all_limma_files)[-10]
-data <- all_limma_files %>% map(read_csv)
-
-files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE2", full.names = T)
+files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DEmix", full.names = T)
 files <- gtools::mixedsort(files)[-10]
 data <- files %>% map(read_csv)
+
+# DESeq_files<-  list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2", full.names = T)
+# DESeq_files <- gtools::mixedsort(DESeq_files)[-10]
+# data <- DESeq_files %>% map(read_csv)
+
+# all_limma_files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma", full.names = T)
+# all_limma_files <- gtools::mixedsort(all_limma_files)[-10]
+# data <- all_limma_files %>% map(read_csv)
+
+# files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE2", full.names = T)
+# files <- gtools::mixedsort(files)[-10]
+# data <- files %>% map(read_csv)
 ```
 
 ## Merge data
@@ -78,33 +86,49 @@ full_tables <- filter(full_tables, ID %in% genes$ID)
 full_tables <- full_tables[which(!is.na(full_tables$ID)),]
 full_tables
 
-# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/all_limma_mergedTables.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix_mergedTables.csv")
 ```
 
 ## Getting gene symbols
 
 ```{r}
 library("biomaRt")
-ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
-genes <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol", "transcript_biotype"), filters = c("ensembl_gene_id"), values = full_tables$ID, mart = ensembl)
-# genes <- genes[,ifelse(genes$transcript_biotype == "protein_coding")]
+mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl")
 full_tables$ID <- gsub("\\..*","", full_tables$ID)
+genes <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol","transcript_biotype"), 
+                          filters = c("ensembl_gene_id"), 
+                          values = full_tables$ID,
+                          #values = list(biotype=c("protein_coding")), 
+                          mart = mart)
+# genes <- genes[,ifelse(genes$transcript_biotype == "protein_coding")]
+coding_genes <- subset(genes, transcript_biotype == "protein_coding")
 names(genes)[1] <- "ID"
 names(genes)[2] <- "gene_name"
 full_tables <- list(full_tables, genes) %>% purrr::reduce(full_join, by = "ID") 
+#ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+#genes <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol", "transcript_biotype"), filters = c("ensembl_gene_id"), values = full_tables$ID, mart = ensembl)
+# genes <- genes[,ifelse(genes$transcript_biotype == "protein_coding")]
+# full_tables$ID <- gsub("\\..*","", full_tables$ID)
+# names(genes)[1] <- "ID"
+# names(genes)[2] <- "gene_name"
+# full_tables <- list(full_tables, genes) %>% purrr::reduce(full_join, by = "ID") 
 ```
 
 ## Output
 
 ```{r}
-write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
-write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mergedTables_symbol.csv")
+write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_mergedTables_symbol.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mergedTables_symbol.csv")
 ```
 
 ```{r}
-tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
+tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
+# tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_mergedTables_symbol.csv")
+# tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
 tables <- tables[tables$transcript_biotype == "protein_coding", ]
-write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_protein_coding.csv")
+write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_protein_coding.csv")
 ```
 
 
