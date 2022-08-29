@@ -83,9 +83,9 @@ rsync --progress -rav pump/*/output/ pump_output
 
 Since the `pump` module has individual outputs for each individual sample, all sample outputs need to be consolidated for a single study, this for every study. A `unify_output` folder is created inside each study folder. 
 
-**IMPORTANT** for this pipeline, the `recount-unify_1.0.9.sif` singularity image need to be inside each study's `unify_output` folder, however, only one image needs to be downloaded and can be moved to the different folders with `mv`, alternatively, the full stable location path for the image can be specified in the`hpc_unify_**.sh` script if preferable.
+**IMPORTANT** for this pipeline, the `recount-unify_1.0.9.sif` singularity image needscd to be inside each study's `unify_output` folder, however, only one image needs to be downloaded and can be moved to the different folders with `mv`, alternatively, the full stable location path for the image can be specified in the`hpc_unify_**.sh` script if preferable.
 
-The `hpc_unify_**.sh` scrip contains the commands necessary to run the unify module and is specific for each study, can be found in `monorail/SRP*/hpc_unify_**.sh`. 
+The `hpc_unify_**.sh` scrip contains the commands necessary to run the unify module and is specific for each study, can be found in `monorail/SRP*/hpc_unify_**.sh`. Each `input_samples.tsv` file contains the samples' IDs for each study and can be found in this repository in `monorail/SRP*/input_samples.tsv`.
 
 For SRP311059
 
