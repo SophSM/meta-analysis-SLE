@@ -26,8 +26,6 @@ SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pu
 
 Getting reference indexes for both pump and unify modules
 
-The script with the lines used to get these indexes and the setup of the `reference` folder are in `monorail/get-human-folder.sh`
-
 ```{bash eval = F}
 bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_unify_refs.sh hg38
 bash /mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/get_human_ref_indexes.sh
