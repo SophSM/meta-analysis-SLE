@@ -7,7 +7,7 @@ This meta-analysis pipeline then incorporates the output from the `monorail exte
 
 # About the monorail pipeline
 
-The extact commands that were used for both the `pump` module and the `unify` module are in `monorail/monorail-pipeline.Rmd`. In order to load the output into R, a specific arrangement of the output files in a folder needs to be followed and is specified in the `monorail-external` documentation at https://github.com/langmead-lab/monorail-external. Additionally, the commands used for the creation of this folder in this meta-analysis can be found in the begining of the `download-1.Rmd` and the rough setup is the following:
+The extact commands that were used for both the `pump` module and the `unify` module are in `monorail/monorail-pipeline.Rmd`. In order to load the output into R, a specific arrangement of the output files in a folder needs to be followed and is specified in the `monorail-external` documentation at https://github.com/langmead-lab/monorail-external. Additionally, the commands used for the creation of this folder in this meta-analysis can be found in the `monorail/get-human-folder.sh` script and the rough setup is the following:
 
 ```
 └── human

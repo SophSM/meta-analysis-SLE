@@ -135,4 +135,4 @@ chmod +x hpc_unify_11.sh
 ./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/unify_output SRP111941 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/pump_output
 ```
 
-After the unify module is finished for all studies, the code lines used for the set up of the `human` folder with all outputs as well as the metadata can be found in the beginning of `download-1.Rmd` and is necessary for the further analysis workflow in R.
+After the unify module is finished for all studies, the code lines used for the set up of the `human` folder with all outputs as well as the metadata can be found in the  `monorail/get-human-folder.sh` script and is necessary for the further analysis workflow in R.
