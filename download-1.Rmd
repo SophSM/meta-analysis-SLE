@@ -12,6 +12,7 @@ With this script, each study is retrieved from the Recount3 database and turned 
 ## Integrating monorail-external processed data
 
 ```{bash}
+qlogin
 cd /mnt/Citosina/amedina/ssalazar/meta/out
 module load r/4.0.2
 R

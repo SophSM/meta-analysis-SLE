@@ -34,15 +34,13 @@ library("biomaRt")
 ## Read data
 
 ```{r}
-full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_protein_coding.csv")
-# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_protein_coding.csv")
-# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_protein_coding.csv")
-# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/protein_coding.csv")
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/limma_protein_coding.csv")
+# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_protein_coding.csv")
 colnames(full_tables)
 rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
-# SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 SRA_info<-SRA_info %>% remove_rownames %>% column_to_rownames(var="SRA")
+SRA_info2<-read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 ```
 
 
@@ -62,12 +60,12 @@ genes_emb <- tab$gene_name %in% all_genes$hgnc_symbol
 
 ## p-Values
 
-We first check pvalues histograms. [Ref](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6164648/)
+We first check pvalues histograms.
 
 ```{r}
 # with different normalization methods 
 #outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures1/"
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures_mix2/"
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/"
 FC <- str_subset(colnames(full_tables),"logFC")
 # Genes with a adjusted p value
 adjp <- full_tables %>%
@@ -199,15 +197,15 @@ SE <- str_subset(colnames(df),"lfcSE_")
 SRA <- gsub(".*_","",FC)
 ## Function to perform a meta-analysis per gene
 meta.plot <- function(gs){
-  gene <-  full_tables[df$gene_name == gs,] # IFI44L
+  gene <-  df[df$gene_name == gs,]
   #gene <-  na.omit(full_tables[full_tables$gene_name == gs,])
   gene <- gene[!is.na(gene$gene_name),]
   dat <- data.frame(
     yi = as.numeric(gene[,FC]), # effect sizes observed (Fold change)
     sei = as.numeric(gene[,SE]),
-    n1i = as.numeric(SRA_info$CONTROL),
-    n2i = as.numeric(SRA_info$SLE),
-    study = SRA_info$SRA
+    n1i = as.numeric(SRA_info2$CONTROL),
+    n2i = as.numeric(SRA_info2$SLE),
+    study = SRA_info2$SRA
   )
 
   dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) 
@@ -218,7 +216,7 @@ meta.plot <- function(gs){
   #forest(res,slab = SRA, main=unique(gene$gene_name))
 #dev.off()
 #####
-  dat$study <- SRA_info$SRA
+  dat$study <- SRA_info2$SRA
   m1 <- metagen(TE = yi, 
                   seTE = sei, 
                   studlab = study, 
@@ -545,14 +543,14 @@ dev.off()
 ## Forest plots
 
 ```{r}
-# png(file= paste0(outdir,"forestplot-RPS4Y2.png"), width = 800, height = 800)
-  # meta.plot("RPS4Y2")
-# dev.off()
-# png(file= paste0(outdir,"forestplot-ZFY-AS.png"), width = 800, height = 800)
-  # meta.plot("ZFY-AS")
-# dev.off()
-# png(file= paste0(outdir,"forestplot-PTPN21.png"), width = 800, height = 800)
-  # meta.plot("PTPN21")
-# dev.off()
+png(file= paste0(outdir,"forestplot-BRCA2.png"), width = 800, height = 800)
+  meta.plot("BRCA2")
+dev.off()
+png(file= paste0(outdir,"forestplot-IRF7.png"), width = 800, height = 800)
+  meta.plot("IRF7")
+dev.off()
+png(file= paste0(outdir,"forestplot-IFITM1.png"), width = 800, height = 800)
+  meta.plot("IFITM1")
+dev.off()
 ```
 

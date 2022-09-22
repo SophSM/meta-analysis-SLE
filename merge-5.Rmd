@@ -27,17 +27,17 @@ library(tidyverse)
 We will import DE results from all experiments. 
 
 ```{r}
-files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DEmix", full.names = T)
-files <- gtools::mixedsort(files)[-10]
-data <- files %>% map(read_csv)
+#files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DEmix", full.names = T)
+#files <- gtools::mixedsort(files)[-10]
+#data <- files %>% map(read_csv)
 
 # DESeq_files<-  list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_DESeq2", full.names = T)
 # DESeq_files <- gtools::mixedsort(DESeq_files)[-10]
 # data <- DESeq_files %>% map(read_csv)
 
-# all_limma_files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma", full.names = T)
-# all_limma_files <- gtools::mixedsort(all_limma_files)[-10]
-# data <- all_limma_files %>% map(read_csv)
+all_limma_files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma", full.names = T)
+all_limma_files <- gtools::mixedsort(all_limma_files)[-10]
+data <- all_limma_files %>% map(read_csv)
 
 # files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE2", full.names = T)
 # files <- gtools::mixedsort(files)[-10]
@@ -86,7 +86,7 @@ full_tables <- filter(full_tables, ID %in% genes$ID)
 full_tables <- full_tables[which(!is.na(full_tables$ID)),]
 full_tables
 
-# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DEmix_mergedTables.csv")
+ write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/mergedTables.csv")
 ```
 
 ## Getting gene symbols
@@ -117,18 +117,18 @@ full_tables <- list(full_tables, genes) %>% purrr::reduce(full_join, by = "ID")
 ## Output
 
 ```{r}
-write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
 # write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_mergedTables_symbol.csv")
-# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
+write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/limma_mergedTables_symbol.csv")
 # write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mergedTables_symbol.csv")
 ```
 
 ```{r}
-tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
+# tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_mergedTables_symbol.csv")
 # tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DESeq2_mergedTables_symbol.csv")
-# tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/limma_mergedTables_symbol.csv")
+tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/limma_mergedTables_symbol.csv")
 tables <- tables[tables$transcript_biotype == "protein_coding", ]
-write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/mix2_protein_coding.csv")
+write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_limma/limma_protein_coding.csv")
 ```
 
 

@@ -21,7 +21,7 @@ Loading singularity image containers for both pump and unify
 
 ```{bash eval = F}
 SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/benlangmead/recount-rs5:1.0.6
-SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/broadsword/recount-unify:1.0.9
+SINGULARITY_CACHEDIR=/mnt/Citosina/amedina/ssalazar/meta/monorail singularity pull docker://quay.io/broadsword/recount-unify:1.1.0
 ```
 
 Getting reference indexes for both pump and unify modules
@@ -40,8 +40,7 @@ mv hg38 references/; mv hg38_unify references/
 
 ### Running pump module
 
-A `pump`folder is created inside each individual study folder
-The `pump-commands.sh` bash script is created using the python script `get-pump-commands.py` specific for each study and can be found inside each study folder in `monorail/SRP*/get-pump-commands.py`.
+A `pump`folder is created inside each individual study folder The `pump-commands.sh` bash script is created using the python script `get-pump-commands.py` specific for each study and can be found inside each study folder in `monorail/SRP*/get-pump-commands.py`.
 
 ```{bash eval = F}
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941
@@ -79,9 +78,9 @@ rsync --progress -rav pump/*/output/ pump_output
 
 ### Running unify module
 
-Since the `pump` module has individual outputs for each individual sample, all sample outputs need to be consolidated for a single study, this for every study. A `unify_output` folder is created inside each study folder. 
+Since the `pump` module has individual outputs for each individual sample, all sample outputs need to be consolidated for a single study, this for every study. A `unify_output` folder is created inside each study folder.
 
-**IMPORTANT** for this pipeline, the `recount-unify_1.0.9.sif` singularity image needscd to be inside each study's `unify_output` folder, however, only one image needs to be downloaded and can be moved to the different folders with `mv`, alternatively, the full stable location path for the image can be specified in the`hpc_unify_**.sh` script if preferable.
+**IMPORTANT** for this pipeline, the `recount-unify:1.1.0` singularity image needscd to be inside each study's `unify_output` folder, however, only one image needs to be downloaded and can be moved to the different folders with `mv`, alternatively, the full stable location path for the image can be specified in the`hpc_unify_**.sh` script if preferable.
 
 The `hpc_unify_**.sh` scrip contains the commands necessary to run the unify module and is specific for each study, can be found in `monorail/SRP*/hpc_unify_**.sh`. Each `input_samples.tsv` file contains the samples' IDs for each study and can be found in this repository in `monorail/SRP*/input_samples.tsv`.
 
@@ -90,7 +89,7 @@ For SRP311059
 ```{bash eval = F}
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059
 mkdir unify_output
-cp ../recount-unify_1.0.9.sif unify_output
+cp ../recount-unify-1.1.0.simg unify_output
 cd unify_output
 cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP311059/input_samples.tsv .
 chmod +x hpc_unify_31.sh
@@ -102,11 +101,11 @@ For SRP322015
 ```{bash eval = F}
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP322015
 mkdir unify_output
-cp ../recount-unify_1.0.9.sif unify_output
+mv ../recount-unify-1.1.0.simg unify_output
 cd unify_output
 cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP322015/input_samples.tsv .
 chmod +x hpc_unify_32.sh
-./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/unify_output SRP311059 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/pump_output
+./hpc_unify_32.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/unify_output SRP311059 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP311059/pump_output
 ```
 
 For SRP296987
@@ -114,7 +113,7 @@ For SRP296987
 ```{bash eval = F}
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987
 mkdir unify_output
-cp ../recount-unify_1.0.9.sif unify_output
+mv ../recount-unify-1.1.0.simg unify_output
 cd unify_output
 cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP296987/input_samples.tsv .
 chmod +x hpc_unify_29.sh
@@ -126,11 +125,11 @@ For SRP111941
 ```{bash}
 cd /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941
 mkdir unify_output
-cp ../recount-unify_1.0.9.sif unify_output
+mv ../recount-unify-1.1.0.simg unify_output
 cd unify_output
 cp /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP111941/input_samples.tsv .
 chmod +x hpc_unify_11.sh
 ./hpc_unify.sh /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/unify_output SRP111941 /mnt/Citosina/amedina/ssalazar/meta/monorail/SRP111941/pump_output
 ```
 
-After the unify module is finished for all studies, the code lines used for the set up of the `human` folder with all outputs as well as the metadata can be found in the  `monorail/get-human-folder.sh` script and is necessary for the further analysis workflow in R.
+After the unify module is finished for all studies, the code lines used for the set up of the `human` folder with all outputs as well as the metadata can be found in the `monorail/get-human-folder.sh` script and is necessary for the further analysis workflow in R.

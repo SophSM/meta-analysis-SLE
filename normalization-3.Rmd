@@ -25,16 +25,30 @@ library(tidyverse)
 library("sva")
 ```
 
+
+
 ## Normalization
 
 Getting the curated rse objects obtained from previous `curation.Rmd`.
 
 ```{r}
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
-curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
-normalization <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
-limma_all <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+rse <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz")
+normalization <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
+
+## PCA plots pre-normalization
+
+```{r}
+for (i in 1:length(curated)){
+  png(file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/figures/PCAs/PCpre", names(curated)[i], ".png"), width = 800, height = 800)
+
+  plotMDS(curated[[i]], labels = curated[[i]]$DISEASE, col=ifelse(curated[[i]]$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
+  dev.off()
+}
+```
+
 
 Function for creating a `dge` object for each `rse` object.
 
@@ -54,18 +68,32 @@ get_dge <- function(rse){
 
 Performing normalization 
 
+## Batch correction for SRP168421
+
+```{r}
+rse_object <- curated$SRP168421
+batch<- c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,1,1)
+corrected <- ComBat_seq(counts = assays(rse_object)$counts, batch = batch, group = rse_object$DISEASE)
+assays(curated$SRP168421)$counts <- corrected
+# pca FOR batch corrected
+png(file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/figures/PCAs/PCpre-correctedSRP16.png"), width = 800, height = 800)
+  plotMDS(curated$SRP168421, labels = curated$SRP168421$DISEASE, col=ifelse(curated$SRP168421$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
+  dev.off()
+assays(rse$SRP168421)$counts <- corrected
+
+```
+
 ## limma method for all studies
 
 ```{r}
 for(i in 1:length(SRA_projects)){
-  rse_object <- limma_all[i]
+  rse_object <- curated[i]
   # apply the function to the rse object inside each list name
   dge_result <- lapply(rse_object, get_dge)
   # overwriting each list element for the dge object
-  limma_all[i] <- dge_result
+  curated[i] <- dge_result
 }
-
-saveRDS(limma_all, file = "/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz", compress = "xz")
+saveRDS(curated, file = "/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz", compress = "xz")
 ```
 
 
@@ -79,48 +107,30 @@ For study SRP296987
   # apply the function to the rse object inside each list name
   # dge_result <- lapply(rse_object, get_dge)
  dge_result <- get_dge(rse_object)
- saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz", compress = "xz")
-  # overwriting each list element for the dge object
-  # normalization[i] <- dge_result
-  ## MDS Plot of dge object
-  #png(file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/figures/MDSplot_", names(curated)[i], ".png"), width = 800, height = 800)
-   # plotMDS(dge_result[[1]], labels = rse_object[[1]]$DISEASE, col=ifelse(rse_object[[1]]$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="pairwise", prior.count = 5)
-    
-    
-  #dev.off()
-    #png(file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/figures/PC-MDSplot_", names(curated)[i], ".png"), width = 800, height = 800)
-    #plotMDS(dge_result[[1]], labels = rse_object[[1]]$DISEASE, col=ifelse(rse_object[[1]]$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
-    
-    
-  # dev.off()
-  
-  png(file = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/PC-MDSplot_SRP296987.png", width = 800, height = 800)
-  plotMDS(dge_result, labels = rse_object$DISEASE, col=ifelse(rse_object$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
-  dev.off()
+ saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/dge_mix/SRP296987_dge.xz", compress = "xz")
 ```
 
 For SRP062966
 ```{r}
 rse_object <- curated$SRP062966
 dge_result <- get_dge(rse_object)
-saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz", compress = "xz")
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/dge_mix/SRP062966_dge.xz", compress = "xz")
 ```
 
 For SRP073191
+
 ```{r}
 rse_object <- curated$SRP073191
 dge_result <- get_dge(rse_object)
-saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz", compress = "xz")
- # png(file = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/PC-MDSplot_SRP073191.png", width = 800, height = 800)
-  # plotMDS(dge_result, labels = rse_object$sra_attribute.group, col=ifelse(rse_object$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
-  # dev.off()
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/dge_mix/SRP073191_dge.xz", compress = "xz")
 ```
 
 For SRP136102
+
 ```{r}
 rse_object <- curated$SRP136102
 dge_result <- get_dge(rse_object)
-saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/SRP136102_dge.xz", compress = "xz")
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/out/dge_mix/SRP136102_dge.xz", compress = "xz")
 ```
 
 ## Batch correction for SRP168421
@@ -139,8 +149,7 @@ The output is a list of the dge objects obtained for each study.
 
 ```{r}
 # saveRDS(normalization, file = "/mnt/Citosina/amedina/ssalazar/meta/out/normalized_dge.xz", compress = "xz")
-
-saveRDS(curated, file = "/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+saveRDS(rse, file = "/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
 
 ## Session info

@@ -34,15 +34,17 @@ Getting the normalized `DGEList` objects obtained from previous `normalization.R
 ```{r}
 SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
 
-# DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz")
-dge_1 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz")
-dge_2 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz")
-dge_3 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz")
-dge_4 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP136102_dge.xz")
+DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/all_dge.xz")
+
+
+#dge_1 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP296987_dge.xz")
+#dge_2 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP062966_dge.xz")
+#dge_3 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP073191_dge.xz")
+#dge_4 <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/SRP136102_dge.xz")
 rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 # copy to overwrite
-DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
-all_limma <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+# DE_analysis <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
+#all_limma <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 ```
 
 The following function performs the DE analysis for each `DGEList` given as input.
@@ -79,8 +81,7 @@ Limma for all studies
 
 ```{r}
 for(i in 1:length(SRA_projects)){
-  rse_object <- rse_curated[i]
-  rse <- rse_object[[1]]
+  rse <- rse_curated[[i]]
   dge_object <- DE_analysis[i]
   # apply the function to the rse object inside each list name
   DE_result <- lapply(dge_object, do_limma, rse_gene = rse)

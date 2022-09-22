@@ -5,7 +5,7 @@ module load singularity
 
 #.e.g /path/to/monorail-exertnal/singularity
 dir=/mnt/Citosina/amedina/ssalazar/meta/monorail/monorail-external/singularity
-export IMAGE=/mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987/unify_output/recount-unify_1.0.9.sif
+export IMAGE=/mnt/Citosina/amedina/ssalazar/meta/monorail/SRP296987/unify_output/recount-unify-1.1.0.simg
 export REF=hg38
 #this containers the subdirs hg38 (grcm38) and hg38_unify (grcm38_unify)
 export REFS_DIR=/mnt/Citosina/amedina/ssalazar/meta/monorail/references
