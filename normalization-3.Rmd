@@ -89,12 +89,14 @@ assays(rse$SRP168421)$counts <- corrected
 
 # normalizing
 dge_result <- get_dge(rse_object)
+curated$SRP168421 <- dge_result
 design <- model.matrix(as.formula(~ rse_object$DISEASE), data = colData(rse_object))
 # fitting limma 
 vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP168421")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP168421.csv"))
 ```
 
@@ -117,6 +119,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP073191")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP073191.csv"))
 ```
 
@@ -138,6 +141,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP062966")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP062966.csv"))
 ```
 
@@ -159,6 +163,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP136102")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP136102.csv"))
 ```
 
@@ -180,6 +185,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP111941")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP111941.csv"))
 ```
 
@@ -201,6 +207,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP296987")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP296987.csv"))
 ```
 
@@ -222,6 +229,7 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP311059")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP311059.csv"))
 ```
 
@@ -243,8 +251,15 @@ vGene <- voom(dge_result, design, plot = F)
 eb_results <- eBayes(lmFit(vGene))
 de_results <- topTable(eb_results, coef = ncol(design), number = nrow(rse_object), sort.by = "none", confint = T)
 res <- as_tibble(de_results,rownames="rownames")
+colnames(res) <- str_c(colnames(res),"_SRP322015")
 write_csv(as.data.frame(res), file = str_c("/mnt/Citosina/amedina/ssalazar/meta/out/batch/Table_Genes_SRP322015.csv"))
 ```
+
+## output for batch correction
+```{r}
+saveRDS(curated, file = "/mnt/Citosina/amedina/ssalazar/meta/out/batch_all_dge.xz", compress = "xz")
+```
+
 
 ## limma method for all studies
 

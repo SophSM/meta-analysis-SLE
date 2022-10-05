@@ -27,14 +27,19 @@ library(tidyverse)
 We will import DE results from all experiments. 
 
 ```{r}
-files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix", full.names = T)
+files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected", full.names = T)
 files <- gtools::mixedsort(files)[-10]
 data <- files %>% map(read_csv)
 
 
-files2 <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected", full.names = T)
-files2 <- gtools::mixedsort(files)[-10]
-data <- files2 %>% map(read_csv)
+# files <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix", full.names = T)
+# files <- gtools::mixedsort(files)[-10]
+# data <- files %>% map(read_csv)
+
+
+# files2 <- list.files("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected", full.names = T)
+# files2 <- gtools::mixedsort(files)[-10]
+# data <- files2 %>% map(read_csv)
 ```
 
 ## Merge data
@@ -79,8 +84,8 @@ full_tables <- filter(full_tables, ID %in% genes$ID)
 full_tables <- full_tables[which(!is.na(full_tables$ID)),]
 full_tables
 
- write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/mergedTables.csv")
-  write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/mergedTables.csv")
+write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/mergedTables.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/mergedTables.csv")
 ```
 
 ## Getting gene symbols
@@ -111,16 +116,16 @@ full_tables <- list(full_tables, genes) %>% purrr::reduce(full_join, by = "ID")
 ## Output
 
 ```{r}
-write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/mergedTables_symbol.csv")
-write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/mergedTables_symbol.csv")
+write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/mergedTables_symbol.csv")
+# write_csv(full_tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/mergedTables_symbol.csv")
 ```
 
 ```{r}
-tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/mergedTables_symbol.csv")
-tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/mergedTables_symbol.csv")
+tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/mergedTables_symbol.csv")
+# tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/mergedTables_symbol.csv")
 tables <- tables[tables$transcript_biotype == "protein_coding", ]
-write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/merged_protein_coding.csv")
-write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/merged_protein_coding.csv")
+write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/merged_protein_coding.csv")
+# write_csv(tables, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/merged_protein_coding.csv")
 ```
 
 

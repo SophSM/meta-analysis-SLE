@@ -4,6 +4,7 @@ author: "Sofia Salazar"
 date: "5/17/2022"
 output: html_document
 ---
+
 ## Setup
 
 This script is used to perform a Meta-analysis of the studies in the `SRA-IDs.txt` file.
@@ -34,18 +35,17 @@ library("biomaRt")
 ## Read data
 
 ```{r}
-# full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/merged_protein_coding.csv")
-full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/merged_protein_coding.csv")
+#full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/merged_protein_coding.csv")
+full_tables <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/merged_protein_coding.csv")
 colnames(full_tables)
 # rse_curated <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/corrected_rse.xz")
 SRA_info <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 SRA_info<-SRA_info %>% remove_rownames %>% column_to_rownames(var="SRA")
 SRA_info2<-read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 
-SRA_info <- SRA_info%>%slice(c(1, 2, 3, 6, 8)) # SELECTED STUDIES
+SRA_info <- SRA_info%>%slice(c(1, 3, 5, 6,7, 8)) # SELECTED STUDIES
 SRA_info2 <- SRA_info2%>%slice(c(1, 2, 3, 6, 8)) # SELECTED STUDIES
 ```
-
 
 Filtering genes by selecting only protein coding genes in the human genome using biomaRt.
 
@@ -67,7 +67,7 @@ We first check pvalues histograms.
 
 ```{r}
 # with different normalization methods 
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/"
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/figures/"
 FC <- str_subset(colnames(full_tables),"logFC")
 # Genes with a adjusted p value
 adjp <- full_tables %>%
@@ -90,8 +90,6 @@ adjp %>%
 dev.off()
 ```
 
-Then, we look for how many genes are up regulated with a p-value less than `r  adj_pvalue`  in the 
-
 ```{r}
 # log fold change
 logFC <- full_tables %>%
@@ -111,17 +109,23 @@ logFC %>%
   ylab("Frequency") +
   facet_wrap(~SRA, scales = "free_x") 
 dev.off()
-# recovering logFC values from genes with p value less than 0.01 
+# recovering logFC values from genes with p value less than 0.05 
 adj_pvalue <- 0.05
+# ap <- left_join(adjp,logFC,by = c("gene_name" = "gene_name", "SRA" = "SRA"))
+# ap <- filter(ap,adjP < adj_pvalue)
+# ap <-dplyr::select(ap, -adjP) # select all columns except adjP
+# u <- ap[!duplicated(ap$gene_name), ]
+# spread <- spread(u, SRA,logFC) %>% 
+  # replace(is.na(.), 0)
+# ap <- spread
+
 ap <- left_join(adjp,logFC,by = c("gene_name" = "gene_name", "SRA" = "SRA")) %>%
   filter(adjP < adj_pvalue) %>% 
   dplyr::select(-adjP) %>% 
   spread(SRA,logFC) %>% 
   replace(is.na(.), 0)
 ap
-# Experiments with no DE genes 
-#unique(logFC$SRA)[which(!unique(logFC$SRA)  %in% colnames(ap))]
-#ap$GSE42057 <- 0
+
 # selecting up regulated genes
 up <- ap %>%
   mutate_at(vars(-gene_name),list(~if_else( .>0, 1, 0)))
@@ -136,7 +140,7 @@ m <- make_comb_mat(up,mode = "distinct")
 m <- m[comb_degree(m) >= 2 | comb_degree(m) == 1]
 #pdf("upsetUP.pdf",width = 14,height = 6)
 
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/upset/"
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/figures/"
 png(file = paste0(outdir,"UpSet-plot-upregulated.png"), width = 800, height = 800)
 ht <- draw(UpSet(m,
       pt_size = unit(5, "mm"), 
@@ -186,9 +190,9 @@ We first calculate the Standard error using confidence intervals
 ```{r}
 CI.R <- str_subset(colnames(full_tables),"CI.R")
 CI.L <- str_subset(colnames(full_tables),"CI.L")
-# for(i in 1:length(CI.R)) {
-  # full_tables[str_c("SE_",gsub(".*_","",CI.R))] <- (full_tables[,CI.R]-full_tables[,CI.L]) /(2*1.96)
-# }
+for(i in 1:length(CI.R)) {
+  full_tables[str_c("SE_",gsub(".*_","",CI.R))] <- (full_tables[,CI.R]-full_tables[,CI.L]) /(2*1.96)
+}
 ```
 
 ```{r}
@@ -196,7 +200,7 @@ df <- full_tables %>%
   # arrange(ID, -Depth) %>%
   filter(duplicated(ID) == FALSE)
 FC <- str_subset(colnames(df),"logFC|log2FoldChange")
-SE <- str_subset(colnames(df),"lfcSE_")
+SE <- str_subset(colnames(df),"lfcSE_|SE_")
 SRA <- gsub(".*_","",FC)
 ## Function to perform a meta-analysis per gene
 meta.plot <- function(gs){
@@ -276,13 +280,13 @@ length(gm)
 for (i in gm) { 
   gene <- df[which(datos$gene_name == i),]
   dat <- data.frame(
-    yi = as.numeric(gene[,FC][1,]),
-    sei = as.numeric(gene[,SE][1,]),
-    n1i = as.numeric(SRA_info$CONTROL),
-    n2i = as.numeric(SRA_info$SLE)
+    yi = as.numeric(gene[,FC][1,]), # estimate of the treatment effect
+    sei = as.numeric(gene[,SE][1,]), # Standard error of treatment estimate
+    n1i = as.numeric(SRA_info$CONTROL), # number of controls per study
+    n2i = as.numeric(SRA_info$SLE) # number on SLE patients per study
   )
   dat$study <- rownames(SRA_info)
-  
+  if(sum(rowSums(is.na(dat)) >0) == 0){
   # meta analysis with random models "REML"
   # https://www.rdocumentation.org/packages/meta/versions/4.9-6/topics/metagen
   m1 <- metagen(TE = yi, 
@@ -294,11 +298,12 @@ for (i in gm) {
                   method.tau = "REML", 
                   prediction = TRUE,
                   sm= "MD",
-                  control=list(maxiter=1000), # increasing number of iteration
+                  control=list(stepadj=0.5, maxiter=10000), # decreasing step length
                   fixed = FALSE)
   num_exp <- sum(!is.na(dat$yi))
   meta <- rbind(meta,
                 c(i, m1$TE.random,m1$pval.random,m1$tau2,m1$I2,m1$pval.Q,num_exp))
+  }
 }
 
 
@@ -318,13 +323,13 @@ metau$qval.Q <- p.adjust(metau$pval.Q, method = "fdr")
 ### Output of full genes meta-analysis
 
 ```{r}
-write.csv(metau, file ="/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
+write.csv(metau, file ="/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta-analysis-6.csv")
 ```
 
 ```{r}
 meta <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
 ### Distribution of statistics 
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/figures/"
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/figures/"
 png(file= paste0(outdir,"distribution-stats-full.png"), width = 800, height = 800)
   bqval <- ggplot(meta) +
     aes(x = qval.random) +
@@ -355,7 +360,7 @@ png(file= paste0(outdir,"distribution-stats-full.png"), width = 800, height = 80
                   nrow =2,
                   ncol =3)
 dev.off()
-### Selecting genes
+### Selecting genes with less than 5% probability that it is a false positive
 qval_cutoff <- 0.05
 genesqval <- meta %>% 
   filter(meta$qval.random <= qval_cutoff & I2 < 0.60 & num_exp > 1) %>% 
@@ -371,17 +376,17 @@ topgenes <- full_tables %>%
 topgenes <- column_to_rownames(topgenes,"gene_name")
 # scaling data
 topgenes <- scale(topgenes)
+write.csv(topgenes, file ="/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta-logFC-topgenes.csv")
 
 color <- rev(colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(15))
 breaks <- c(seq(min(topgenes,na.rm = T),-0.1,length.out = 7),0,seq(0.1,max(topgenes,na.rm = T),length.out = 7))
 ```
 
-
 ### MetaVolcano
 
-Using [Metavolcano](https://www.bioconductor.org/packages/release/bioc/vignettes/MetaVolcanoR/inst/doc/MetaVolcano.html) funcions to create a volcano plot with DE genes 
+Using [Metavolcano](https://www.bioconductor.org/packages/release/bioc/vignettes/MetaVolcanoR/inst/doc/MetaVolcano.html) funcions to create a volcano plot with DE genes
 
-We first need to create a list with tables. Each table contains information about gene `Symbol`, `Log2FC`, `pvalue`, `CI.L`, `CI.R` per experiment. 
+We first need to create a list with tables. Each table contains information about gene `Symbol`, `Log2FC`, `pvalue`, `CI.L`, `CI.R` per experiment.
 
 ```{r}
 # colnames 
@@ -395,16 +400,14 @@ split_df <- function(i){
   gene_name = unique(tab$gene_name)[genes_emb],
                   tab[genes_emb,which(df$SRA == i)]
                    )
-  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R", "logFC.SE")
+  colnames(df) <- c( "Symbol", "Log2FC",  "pvalue", "CI.L", "CI.R") #, "logFC.SE")
   as.data.frame(df)
 }
 diffexplist <- lapply(sort(unique(df$SRA)[-1]), split_df)
 names(diffexplist) <- sort(unique(df$SRA)[-1])
 # write_csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/diffexplist.csv")
-write.csv(as.data.frame(diffexplist), file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/diffexplist_protein_coding.csv")
+saveRDS(diffexplist, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/diffexplist_protein_coding.xz")
 ```
-
-
 
 ```{r}
 plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
@@ -437,19 +440,21 @@ plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
 
 ```
 
-Now, we implement the `MetaVolcano` funtions. 
+Now, we implement the `MetaVolcano` funtions.
 
 ```{r}
-outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected"
+diffexplist <-readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/diffexplist_protein_coding.xz")
+outdir = "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/figures/"
 ## Vote counting approach
 mv <- votecount_mv(diffexp = diffexplist,
              pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
   pvalue = 0.05, foldchange = 0, metathr = 0.01, collaps = TRUE,
-  jobname = "MetaVolcano_mix", outputfolder = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected", draw = "HTML")
+  jobname = "MetaVolcano", outputfolder = outdir, draw = "HTML")
 # diffexplist <- read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/mix2_diffexplist_protein_coding.csv")
 head(mv@metaresult, 10)
-write_csv(as.data.frame(mv@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/vote_counting_summary.csv")
+# plot_mv(meta_diffexp, nstud, genecol, comb, metafc)
+write_csv(as.data.frame(mv@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/vote_counting_summary.csv")
 # top <- head(mv@metaresult[order(mv@metaresult$randomP),], 30)
 pdf(file= paste0(outdir,"vote_metavolcano.pdf"), width = 20, height = 20)
   mv@MetaVolcano
@@ -467,48 +472,64 @@ meta_degs_comb <- combining_mv(diffexp=diffexplist,
                    metathr=0.01, 
                    collaps=T,
                    jobname="MetaVolcano_protein",
-                   outputfolder="/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected",
+                   outputfolder=outdir,
                    draw='HTML')
-head(meta_degs_comb@metaresult, 3)
-write_csv(as.data.frame(meta_degs_comb@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected/combining_result_protein_coding.csv") 
 
+write_csv(as.data.frame(meta_degs_comb@metaresult), file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/combining_result_protein_coding.csv")
+res <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/combining_result_protein_coding.csv")
+
+## most upregulated or downregulated genes based on FoldChange that is more or less 2 and pvalue < 0.05
+
+topgenes <- res[((res$metafc>=2) |(res$metafc<=-2)) & (res$metap <=5e-2), ]
+
+## DEG genes based on FoldChange that is more or less 1 and pvalue < 0.05
+
+topgenes2 <- res[((res$metafc>=1) |(res$metafc<=-1)) & (res$metap <=5e-2), ]
+# ISG15
+upregulated <- topgenes2[topgenes2$metafc>0,]
+write_csv(as.data.frame(upregulated), file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/upregulated.csv")
+downregulated <- topgenes2[topgenes2$metafc<0,]
+write_csv(as.data.frame(downregulated), file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/downregulated.csv") 
 ###
 meta_degs_rem <- rem_mv(diffexp = diffexplist, pcriteria = "pvalue",
   foldchangecol = "Log2FC", genenamecol = "Symbol", geneidcol = NULL,
   collaps = T, llcol = "CI.L", rlcol = "CI.R", vcol = NULL,
-  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano_mix2_protein",
-  outputfolder = "/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected", draw = "HTML")
+  cvar = TRUE, metathr = 0.01, jobname = "MetaVolcano",
+  outputfolder = outdir, draw = "HTML")
 
 meta_res <- meta_degs_rem@metaresult
 top <- head(meta_degs_rem@metaresult[order(meta_degs_rem@metaresult$randomP),], 30)
 top <- head(meta_degs_rem@metaresult, 3)
-meta_degs_rem@MetaVolcano <- plot_rem(meta_res, 
-               outputfolder="/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected",
-               genecol = 'Symbol', 
-               metathr=0.01) +
+# meta_degs_rem@MetaVolcano <- plot_rem(meta_res, 
+               #outputfolder="/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected",
+               #genecol = 'Symbol', 
+               #metathr=0.01) +
   #geom_label_repel(aes(label = ifelse(Symbol %in% top$Symbol, Symbol, "")),
-  geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
-                  max.overlaps = Inf,
-                  box.padding = 0.5,
-                  size = 4)
+  #geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
+                  #max.overlaps = Inf,
+                  #box.padding = 0.5,
+                  #size = 4)
 pdf(file= paste0(outdir,"rem_metavolcano.pdf"), width = 20, height = 20)
   meta_degs_rem@MetaVolcano
 dev.off()
+
 meta_df <- meta_degs_rem@metaresult %>% 
   filter(randomP < 0.05 )
+write_csv(as.data.frame(meta_df), "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta_rem_filtered.csv")
+
+write_csv(as.data.frame(meta_degs_rem@metaresult), "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta_rem_unfiltered.csv")
 ```
 
 ```{bash}
 awk -F, '{ if ($10 == ) print $1,$2,$3,$4,$5,$6,$7 }' input.txt > output.txt
 ```
 
-
 ## GO analysis
 
 ```{r}
 library(gprofiler2)
 library(forcats)
-resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/upregulated.csv", header = F)
+resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/upregulated.csv", header = F)
 resSig<-resSig %>% remove_rownames %>% column_to_rownames(var="V1")
 DEG <- rownames(resSig)
 genes_universe <- as.vector(na.omit(full_tables$gene_name))
@@ -530,7 +551,7 @@ go %>%
 dev.off()
 
 
-resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/downregulated.csv", header = F)
+resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/downregulated.csv", header = F)
 resSig<-resSig %>% remove_rownames %>% column_to_rownames(var="V1")
 DEG <- rownames(resSig)
 genes_universe <- as.vector(na.omit(full_tables$gene_name))
@@ -566,4 +587,3 @@ png(file= paste0(outdir,"forestplot-IFITM1.png"), width = 800, height = 800)
   meta.plot("IFITM1")
 dev.off()
 ```
-
