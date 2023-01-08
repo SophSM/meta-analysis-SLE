@@ -23,6 +23,8 @@ awk -F '\t' -v OFS='\t' '{print $1,$24}' SraRunTable-SRP322015.tsv > info-SRP322
 awk -F '\t' -v OFS='\t' '{print $1,$13}' SraRunTable-SRP073191.tsv > info-SRP073191.tsv
 # SRP136102
 awk -F '\t' -v OFS='\t' '{print $1,$13}' SraRunTable-SRP136102.tsv > info-SRP136102.tsv
+# SRP168421
+awk -F '\t' -v OFS='\t' '{print $1,$14}' SraRunTable-SRP168421.tsv > info-SRP168421.tsv
 
 ```
 
@@ -227,7 +229,7 @@ curation[i] <- rse_gene
 ```{r}
 saveRDS(curation, file = "/mnt/Citosina/amedina/ssalazar/meta/out/curated_rse.xz", compress="xz")
 df <- df[-1,]
-write_csv(df, file = "/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
+write_csv(df, file = "/mnt/Citosina/amedina/ssalazar/meta/summary.csv")
 ```
 
 ## Session Info

@@ -44,7 +44,7 @@ SRA_info<-SRA_info %>% remove_rownames %>% column_to_rownames(var="SRA")
 SRA_info2<-read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/summary.csv")
 
 SRA_info <- SRA_info%>%slice(c(1, 3, 5, 6,7, 8)) # SELECTED STUDIES
-SRA_info2 <- SRA_info2%>%slice(c(1, 2, 3, 6, 8)) # SELECTED STUDIES
+SRA_info2 <- SRA_info2%>%slice(c(1, 3, 5, 6,7, 8)) # SELECTED STUDIES
 ```
 
 Filtering genes by selecting only protein coding genes in the human genome using biomaRt.
@@ -204,15 +204,19 @@ SE <- str_subset(colnames(df),"lfcSE_|SE_")
 SRA <- gsub(".*_","",FC)
 ## Function to perform a meta-analysis per gene
 meta.plot <- function(gs){
-  gene <-  df[df$gene_name == gs,]
+  gene <-  df[which(df$gene_name == gs),]
   #gene <-  na.omit(full_tables[full_tables$gene_name == gs,])
   gene <- gene[!is.na(gene$gene_name),]
   dat <- data.frame(
-    yi = as.numeric(gene[,FC]), # effect sizes observed (Fold change)
-    sei = as.numeric(gene[,SE]),
-    n1i = as.numeric(SRA_info2$CONTROL),
-    n2i = as.numeric(SRA_info2$SLE),
-    study = SRA_info2$SRA
+    # yi = as.numeric(gene[,FC]), # effect sizes observed (Fold change)
+    # sei = as.numeric(gene[,SE]),
+    # n1i = as.numeric(SRA_info2$CONTROL),
+    # n2i = as.numeric(SRA_info2$SLE),
+    # study = SRA_info2$SRA
+    yi = as.numeric(gene[,FC][1,]), # estimate of the treatment effect
+    sei = as.numeric(gene[,SE][1,]), # Standard error of treatment estimate
+    n1i = as.numeric(SRA_info$CONTROL), # number of controls per study
+    n2i = as.numeric(SRA_info$SLE)
   )
 
   dat <- escalc(measure="ZCOR", yi=yi,sei=sei,n1i=n1i,n2i=n2i, data = dat) # first obtain a set of effect size estimates with their corresponding sampling variances
@@ -411,16 +415,17 @@ saveRDS(diffexplist, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/select
 
 ```{r}
 plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
-    meta_diffexp$randomPadj <- p.adjust(meta_diffexp$randomP, "BH")
+    meta_res$randomPadj <- p.adjust(meta_diffexp$randomP, "BH")
     irandomp <- 0.05
-    meta_diffexp %>%
+    meta_res %>%
         dplyr::mutate(signcon2 = ifelse(`randomP` <= irandomp, signcon, NA)) %>%
 	dplyr::mutate(Ci.ub = ifelse(`randomP` <= irandomp, randomCi.ub, NA)) %>%
 	dplyr::mutate(Ci.lb = ifelse(`randomP` <= irandomp, randomCi.lb, NA)) %>%
-	dplyr::filter(`randomP` <  quantile(meta_diffexp[['randomP']], 0.6)) -> meta_res 
-    ggplot(dplyr::arrange(meta_res, abs(randomSummary)),
+	dplyr::filter(`randomP` <  quantile(meta_res[['randomP']], 0.6)) -> meta_res2
+    png(file= paste0(outdir,"rem_metavolcano.png"), width = 1000, height = 1000)
+        ggplot(dplyr::arrange(meta_res2, abs(randomSummary)),
         aes(x = randomSummary, y = -log10(randomPadj), color = signcon2, 
-	    text = !!rlang::sym(genecol))) +
+	    text = !!rlang::sym('Symbol'))) +
         geom_point(size = 0.6) +
 	scale_color_gradient2(midpoint=0, low="#195696", mid="white", 
 			      high="red", na.value = "grey80") +
@@ -435,9 +440,14 @@ plot_rem <- function(meta_diffexp, jobname, outputfolder, genecol, metathr) {
 	theme(axis.line.x = element_line(color = "black", size = 0.6, 
 					 lineend = "square"),
 	      axis.line.y = element_line(color = "black", size = 0.6, 
-					 lineend = "square"))
+					 lineend = "square"))+
+          geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
+                  max.overlaps = Inf,
+                  box.padding = 0.5,
+                  size = 4)
+        dev.off()
+        
 }
-
 ```
 
 Now, we implement the `MetaVolcano` funtions.
@@ -498,19 +508,23 @@ meta_degs_rem <- rem_mv(diffexp = diffexplist, pcriteria = "pvalue",
   outputfolder = outdir, draw = "HTML")
 
 meta_res <- meta_degs_rem@metaresult
-top <- head(meta_degs_rem@metaresult[order(meta_degs_rem@metaresult$randomP),], 30)
+saveRDS(meta_res, file= "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/REM_resultMetaVolcano.xz")
+top <- head(meta_degs_rem@metaresult[order(meta_degs_rem@metaresult$rank),], 30)
 top <- head(meta_degs_rem@metaresult, 3)
-# meta_degs_rem@MetaVolcano <- plot_rem(meta_res, 
-               #outputfolder="/mnt/Citosina/amedina/ssalazar/meta/out/DE_mix/selected",
-               #genecol = 'Symbol', 
-               #metathr=0.01) +
+
+# plot with names
+meta_res <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/diffexplist_protein_coding.xz")
+# png(file= paste0(outdir,"rem_metavolcano.png")
+plot_rem(meta_res, 
+               jobname="REM",
+               outputfolder=outdir,
+               genecol = 'Symbol', 
+               metathr=0.05) +
   #geom_label_repel(aes(label = ifelse(Symbol %in% top$Symbol, Symbol, "")),
-  #geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
-                  #max.overlaps = Inf,
-                  #box.padding = 0.5,
-                  #size = 4)
-pdf(file= paste0(outdir,"rem_metavolcano.pdf"), width = 20, height = 20)
-  meta_degs_rem@MetaVolcano
+  geom_label_repel(aes(label = ifelse(Symbol %in% rownames(topgenes), Symbol, "")),
+                  max.overlaps = Inf,
+                  box.padding = 0.5,
+                  size = 4)
 dev.off()
 
 meta_df <- meta_degs_rem@metaresult %>% 
@@ -520,11 +534,40 @@ write_csv(as.data.frame(meta_df), "/mnt/Citosina/amedina/ssalazar/meta/out/batch
 write_csv(as.data.frame(meta_degs_rem@metaresult), "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta_rem_unfiltered.csv")
 ```
 
-```{bash}
-awk -F, '{ if ($10 == ) print $1,$2,$3,$4,$5,$6,$7 }' input.txt > output.txt
+
+## REM intersection
+
+```{r}
+#metaVolcanoR REM result
+rem_filt <- read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/meta_rem_filtered.csv")
+rem_filt <- as.data.frame(rem_filt)
+topFC <- rem_filt[((rem_filt$randomSummary>=0.5) |(rem_filt$randomSummary <= -0.5)) & ((rem_filt$signcon >=3) |(rem_filt$signcon <=-3)), ] # genes with summary folchange > 1
+
+write_csv(as.data.frame(topFC), "/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/topFC.csv")
+#REM meta
+meta <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/meta-analysis-6.csv")
+colnames(meta)[1] <-  "Symbol"
+top_meta <- meta[((meta$qval.random < 0.05) & ((meta$TE.random <= -0.5) | (meta$TE.random >=0-5))) ,] # with qval <0.05 and TE > or < 1
+
+join <- inner_join(topFC, top_meta) # genes that in MetaVolcanoR REM had random summary FC more or less 1, and were consistent in more than 3 studies and in meta REM had treatment effect > or < 1/-1 and qval < 0.05 for false discovery rate
+
+
+```
+# Combining method
+```{r}
+res <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/selected/combining_result_protein_coding.csv")
+top_res <- res[(res$metafc >= 1) |(res$metafc <= -1) & (res$metap < 0.05),]
+topgenes <- full_tables %>% 
+  filter(full_tables$gene_name %in% genesqval$X1) %>% 
+  dplyr::select(gene_name,contains("logFC"))
+names(topgenes)[1] <- 'Symbol'
+# join2 <- inner_join(top_res, topgenes) # intersecting results from combining method and REM method with metaVolcanoR
+
+join3 <- inner_join(top_res, top_meta)
 ```
 
-## GO analysis
+
+## Functional enrichment analysis
 
 ```{r}
 library(gprofiler2)
@@ -537,6 +580,10 @@ gostres = gost(query = DEG, organism = "hsapiens", significant = T,
                correction_method = "fdr", domain_scope = "custom", 
                custom_bg = genes_universe, ordered_query = TRUE)
 go <- as.data.frame(gostres$result)
+png(file = paste0(outdir,"enrich-results.png"),
+    width = 1800, height = 800)
+    gostplot(gostres, capped = FALSE, interactive = FALSE)
+dev.off()
 png(file = paste0(outdir,"upregulatedGO.png"),
     width = 1800, height = 800)
 go %>%
@@ -553,6 +600,7 @@ dev.off()
 
 resSig<-read.csv("/mnt/Citosina/amedina/ssalazar/meta/out/batch/downregulated.csv", header = F)
 resSig<-resSig %>% remove_rownames %>% column_to_rownames(var="V1")
+resSig <- resSig[-1,]
 DEG <- rownames(resSig)
 genes_universe <- as.vector(na.omit(full_tables$gene_name))
 gostres = gost(query = DEG, organism = "hsapiens", significant = T, 
@@ -577,13 +625,26 @@ dev.off()
 ## Forest plots
 
 ```{r}
-png(file= paste0(outdir,"forestplot-BRCA2.png"), width = 800, height = 800)
-  meta.plot("BRCA2")
+# meta forest 
+png(file= paste0(outdir,"forestplot-ALDH9A1.png"), width = 800, height = 800)
+  meta.plot("ALDH9A1")
 dev.off()
-png(file= paste0(outdir,"forestplot-IRF7.png"), width = 800, height = 800)
-  meta.plot("IRF7")
+
+#metaVolcanoR REM forest
+draw_forest(meta_degs_rem, gene = "ALDH9A1", genecol = "Symbol", foldchangecol = "Log2FC", llcol = "CI.L", rlcol = "CI.R", jobname = "MetaVolcano", outputfolder = ".", draw = "HTML")
+
+png(file= paste0(outdir,"forestplot-DOHH.png"), width = 800, height = 800)
+  meta.plot("DOHH")
 dev.off()
-png(file= paste0(outdir,"forestplot-IFITM1.png"), width = 800, height = 800)
-  meta.plot("IFITM1")
+png(file= paste0(outdir,"forestplot-RIPK3.png"), width = 800, height = 800)
+  meta.plot("RIPK3")
+dev.off()
+png(file= paste0(outdir,"forestplot-ACTR6.png"), width = 800, height = 800)
+  meta.plot("ACTR6")
+dev.off()
+
+# combining
+png(file= paste0(outdir,"forestplot-EIF5.png"), width = 800, height = 800)
+  meta.plot("EIF5")
 dev.off()
 ```
